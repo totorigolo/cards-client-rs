@@ -1,0 +1,14 @@
+{
+    "recommendations": [
+        "docsmsft.docs-markdown",
+        "firefox-devtools.vscode-firefox-debug",
+        "matklad.rust-analyzer",
+        "ms-python.python",
+        "ms-vsliveshare.vsliveshare",
+        "nathanridley.autotrim",
+        "rust-lang.rust",
+        "serayuzgur.crates",
+        "streetsidesoftware.code-spell-checker",
+        "tyriar.sort-lines"
+    ]
+}

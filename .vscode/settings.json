@@ -1,0 +1,23 @@
+{
+    "spellright.language": [
+        "en_US"
+    ],
+    "spellright.documentTypes": [
+        "markdown",
+        "latex",
+        "plaintext"
+    ],
+    "cSpell.words": [
+        "Lacroix",
+        "bindgen",
+        "devtool",
+        "oninput",
+        "onkeypress",
+        "rustup",
+        "sourcemap",
+        "todomvc",
+        "wasm",
+        "webassembly"
+    ],
+    "files.autoSave": "onFocusChange"
+}

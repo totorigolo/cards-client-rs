@@ -1,0 +1,11 @@
+# Rust related
+**/*.rs.bk
+/target
+wasm-pack.log
+
+# Node.js
+/node_modules
+
+# Generated files
+/pkg
+/dist

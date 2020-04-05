@@ -7,8 +7,9 @@
   <i>At least that's what we are trying to achieve.</i>
 
   <p>
-    <!-- <a href="https://travis-ci.org/rustwasm/wasm-pack-template"><img src="https://img.shields.io/travis/rustwasm/wasm-pack-template.svg?style=flat-square" alt="Build Status" /></a> -->
-    [TODO: Add CI badge]
+    <a href="https://travis-ci.org/totorigolo/cards-client-rs">
+      <img src="https://api.travis-ci.com/totorigolo/cards-client-rs.svg?branch=master" alt="Build Status" />
+    </a>
   </p>
 
   <h3>

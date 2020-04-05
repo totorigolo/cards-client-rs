@@ -10,7 +10,7 @@
         "build:prod": "webpack --mode production",
         "build:dev": "webpack --mode development",
         "start": "webpack-dev-server -d --mode development",
-        "test:rs": "cargo test && wasm-pack test --headless --firefox",
+        "test": "cargo test && wasm-pack test --headless --firefox",
         "clean": "rimraf dist pkg target"
     },
     "devDependencies": {

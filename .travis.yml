@@ -6,7 +6,7 @@ env:
     - NVS_VERSION=1.5.4
     - NODEJS_VERSION=node/13
 
-matrix:
+jobs:
   include:
     - env: RUST_BACKTRACE=1
       script:

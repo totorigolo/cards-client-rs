@@ -39,6 +39,10 @@ impl Component for App {
         App { link, storage, state }
     }
 
+    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
+        false
+    }
+
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::Update(val) => {

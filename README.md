@@ -37,7 +37,7 @@ If you just want to play just head to our [web site](#). If instead you enjoy pl
 
 ### 🛠️ How to build
 
-```
+```bash
 # Needed only the first time
 npm install
 

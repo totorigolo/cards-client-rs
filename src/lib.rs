@@ -18,7 +18,7 @@ pub fn start() -> Result<(), JsValue> {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
-    web_logger::init();
+    wasm_logger::init(wasm_logger::Config::new(log::Level::Trace));
     yew::start_app::<app::App>();
     Ok(())
 }

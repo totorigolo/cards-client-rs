@@ -70,8 +70,6 @@ pub enum Msg {
     Ignore,
 }
 
-type AsBinary = bool;
-
 #[derive(Debug)]
 pub enum WsMsg {
     Close,
@@ -80,7 +78,7 @@ pub enum WsMsg {
     Connected,
     ErrorOccurred,
     Received(Result<WsResponse>),
-    Send(AsBinary),
+    Send(WsRequest),
 }
 
 // pub enum Msg {
@@ -162,19 +160,15 @@ impl Component for App {
                     self.ws = WebSocketConnection::Pending(task);
                 }
                 WsMsg::Connected => {
+                    info!("WebSocket connected.");
                     self.ws.connected();
-                    trace!("{:?}", self.ws);
                 }
-                WsMsg::Send(binary) => {
+                WsMsg::Send(data) => {
+                    trace!("Sending on WS: {:?}", data);
                     if let WebSocketConnection::Connected(ws) = &mut self.ws {
-                        let request = WsRequest(json!({"type": "PING"}));
-                        if binary {
-                            ws.send_binary(Json(&request));
-                        } else {
-                            ws.send(Json(&request));
-                        }
+                        ws.send(Json(&data));
                     } else {
-                        error!("Tried to send on non-opened WS: {:?}", "todo");
+                        error!("Tried to send on non-opened WS.");
                     }
                 }
                 WsMsg::Received(data) => {
@@ -186,7 +180,7 @@ impl Component for App {
                     self.ws = WebSocketConnection::None;
                 }
                 WsMsg::ErrorOccurred => {
-                    info!("An error occurred on WebSocket.");
+                    error!("An error occurred on WebSocket.");
                     self.ws = WebSocketConnection::None;
                 }
             },
@@ -197,7 +191,8 @@ impl Component for App {
     }
 
     fn view(&self) -> Html {
-        info!("rendered!");
+        trace!("Rendered.");
+        let mk_ping = || WsRequest(json!({"type": "PING"}));
         html! {
             <>
                 { self.view_input() }
@@ -210,13 +205,8 @@ impl Component for App {
                 </button>
                 <br/>
                 <button disabled=!self.ws.is_connected()
-                        onclick=self.link.callback(|_| WsMsg::Send(false))>
+                        onclick=self.link.callback(move |_| WsMsg::Send(mk_ping()))>
                     { "Send To WebSocket" }
-                </button>
-                <br/>
-                <button disabled=!self.ws.is_connected()
-                        onclick=self.link.callback(|_| WsMsg::Send(true))>
-                    { "Send To WebSocket [binary]" }
                 </button>
                 <br/>
                 <button disabled=self.ws.is_none()

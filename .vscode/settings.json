@@ -12,6 +12,7 @@
         "Lacroix",
         "bindgen",
         "devtool",
+        "onclick",
         "oninput",
         "onkeypress",
         "rustup",

@@ -24,6 +24,7 @@ module.exports = (env, argv) => {
       path: absPath('dist'),
       filename: '[name].bundle.js',
       webassemblyModuleFilename: 'app.wasm',
+      publicPath: '/',
     },
     optimization: {
       minimize: isProd,
@@ -34,6 +35,7 @@ module.exports = (env, argv) => {
       compress: isProd,
       port: 8000,
       hot: !isProd,
+      historyApiFallback: true,
     },
     devtool: 'source-map',
     module: {

@@ -6,12 +6,17 @@ use yew::format::Json;
 use yew::prelude::*;
 use yew::services::websocket::{WebSocketService, WebSocketStatus, WebSocketTask};
 
+use crate::agents::notifications::*;
+
 pub struct WsExperiment {
     link: ComponentLink<Self>,
+    notification_bus: Dispatcher<NotificationBus>,
 
     ws_server_addr: String,
     ws_service: WebSocketService,
     ws: WebSocketConnection,
+
+    msg_history: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -84,6 +89,13 @@ impl From<WsMsg> for Msg {
     }
 }
 
+impl NotificationSender for WsExperiment {
+    fn notification_bus(&mut self) -> &mut Dispatcher<NotificationBus> {
+        &mut self.notification_bus
+    }
+}
+
+
 impl Component for WsExperiment {
     type Message = Msg;
     type Properties = ();
@@ -91,10 +103,12 @@ impl Component for WsExperiment {
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         WsExperiment {
             link,
+            notification_bus: NotificationBus::dispatcher(),
 
             ws_server_addr: String::from(""),
             ws_service: WebSocketService::new(),
             ws: WebSocketConnection::None,
+            msg_history: vec![],
         }
     }
 
@@ -127,27 +141,31 @@ impl Component for WsExperiment {
                     }
                 }
                 WsMsg::Connected => {
-                    info!("WebSocket connected.");
+                    self.notify_info("WebSocket connected.");
                     self.ws.connected();
                 }
                 WsMsg::Send(data) => {
                     trace!("Sending on WS: {:?}", data);
                     if let WebSocketConnection::Connected(ws) = &mut self.ws {
                         ws.send(Json(&data));
+                        self.msg_history.push(format!("> {}", data.0));
                     } else {
                         error!("Tried to send on non-opened WS.");
                     }
                 }
                 WsMsg::Received(data) => {
-                    //self.data = data.map(|data| data.value).ok();
                     info!("Received: {:?}", data);
+                    match data {
+                        Ok(response) => self.msg_history.push(format!("< {}", response.0)),
+                        Err(e) => self.msg_history.push(format!("< ERROR: {}", e)),
+                    }
                 }
                 WsMsg::Close | WsMsg::Closed => {
-                    info!("WebSocket closed.");
+                    self.notify_info("WebSocket closed.");
                     self.ws = WebSocketConnection::None;
                 }
                 WsMsg::ErrorOccurred => {
-                    error!("An error occurred on WebSocket.");
+                    self.notify_error("An error occurred on WebSocket.");
                     self.ws = WebSocketConnection::None;
                 }
             },
@@ -185,6 +203,11 @@ impl Component for WsExperiment {
                         { "Close WebSocket connection" }
                     </button>
                 </div>
+                <br/>
+                <h2 class="title is-size-4">{ "Message history" }</h2>
+                <pre>
+                    { self.msg_history.join("\n") }
+                </pre>
             </>
         }
     }

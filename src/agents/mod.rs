@@ -1,3 +1,5 @@
-mod notification_bus;
+pub mod notifications;
 
-pub use notification_bus::*;
+pub use notifications::*;
+
+pub use yew::agent::Dispatcher;

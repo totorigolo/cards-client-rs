@@ -1,6 +1,9 @@
 use log::*;
 use serde::{Deserialize, Serialize};
-use yew::{agent::Dispatcher, worker::*};
+use yew::worker::*;
+
+// Re-export this for convenience
+pub use yew::agent::{Dispatcher, Dispatched};
 
 pub struct NotificationBus {
     link: AgentLink<Self>,
@@ -12,7 +15,7 @@ pub trait NotificationSender {
 
     fn notify_success<T: ToString>(&mut self, text: T) {
         let s = text.to_string();
-        debug!("Success: {:?}", &s);
+        debug!("Success notification: {:?}", &s);
         self.notification_bus()
             .send(NotificationRequest::New(Notification {
                 text: s,
@@ -22,7 +25,7 @@ pub trait NotificationSender {
 
     fn notify_info<T: ToString>(&mut self, text: T) {
         let s = text.to_string();
-        info!("Info: {:?}", &s);
+        info!("Info notification: {:?}", &s);
         self.notification_bus()
             .send(NotificationRequest::New(Notification {
                 text: s,
@@ -32,7 +35,7 @@ pub trait NotificationSender {
 
     fn notify_warn<T: ToString>(&mut self, text: T) {
         let s = text.to_string();
-        warn!("Warning: {:?}", &s);
+        warn!("Warning notification: {:?}", &s);
         self.notification_bus()
             .send(NotificationRequest::New(Notification {
                 text: s,
@@ -42,7 +45,7 @@ pub trait NotificationSender {
 
     fn notify_error<T: ToString>(&mut self, text: T) {
         let s = text.to_string();
-        error!("Error: {:?}", &s);
+        error!("Error notification: {:?}", &s);
         self.notification_bus()
             .send(NotificationRequest::New(Notification {
                 text: s,

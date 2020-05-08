@@ -23,7 +23,6 @@ impl Component for Index {
     fn view(&self) -> Html {
         html! {
             <>
-                <h1 class="title is-1">{ "Index" }</h1>
             </>
         }
     }

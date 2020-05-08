@@ -88,12 +88,18 @@ impl Component for App {
                         <div class="box">
                             <Router<AppRoute>
                                 render = Router::render(|route: AppRoute| {
-                                    match route {
+                                    let page = match &route {
                                         AppRoute::Index => html!{ <pages::Index /> },
                                         AppRoute::WsExperiment => html!{ <pages::WsExperiment /> },
                                         AppRoute::Game(GameRoute::List) => html!{ <pages::ListGames /> },
                                         AppRoute::Game(GameRoute::Create) => html!{ <pages::CreateGame /> },
                                         AppRoute::Game(p @ GameRoute::Play { .. }) => html!{ "todo" },
+                                    };
+                                    html! {
+                                        <>
+                                            { route.render_breadcrumb() }
+                                            { page }
+                                        </>
                                     }
                                 })
                                 redirect = Router::redirect(|_: Route| AppRoute::Index)

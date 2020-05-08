@@ -23,7 +23,6 @@ impl Component for CreateGame {
     fn view(&self) -> Html {
         html! {
             <>
-                <h1>{ "Create game" }</h1>
             </>
         }
     }

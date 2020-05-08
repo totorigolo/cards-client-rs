@@ -23,7 +23,6 @@ impl Component for ListGames {
     fn view(&self) -> Html {
         html! {
             <>
-                <h1>{ "List games" }</h1>
             </>
         }
     }

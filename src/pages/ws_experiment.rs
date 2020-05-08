@@ -157,10 +157,9 @@ impl Component for WsExperiment {
 
     fn view(&self) -> Html {
         let mk_ping = || WsRequest(json!({"type": "PING"}));
+        let loading_class = { if self.ws.is_pending() { "is-loading" } else { "" } };
         html! {
             <>
-                <h1>{ "WebSocket test" }</h1>
-
                 <input
                     placeholder="WebSocket server address"
                     value=&self.ws_server_addr
@@ -169,20 +168,23 @@ impl Component for WsExperiment {
                 <br/>
                 { &self.ws_server_addr }
                 <br/>
-                <button disabled=!self.ws.is_none()
-                        onclick=self.link.callback(|_| WsMsg::Connect)>
-                    { if self.ws.is_pending() { "Connecting to WebSocket..." } else { "Connect to WebSocket" } }
-                </button>
-                <br/>
-                <button disabled=!self.ws.is_connected()
-                        onclick=self.link.callback(move |_| WsMsg::Send(mk_ping()))>
-                    { "Send To WebSocket" }
-                </button>
-                <br/>
-                <button disabled=self.ws.is_none()
-                        onclick=self.link.callback(|_| WsMsg::Close)>
-                    { "Close WebSocket connection" }
-                </button>
+                <div class="buttons">
+                    <button class=("button", "is-primary", loading_class)
+                            disabled=!self.ws.is_none()
+                            onclick=self.link.callback(|_| WsMsg::Connect)>
+                        { "Connect to WebSocket" }
+                    </button>
+                    <button class="button"
+                            disabled=!self.ws.is_connected()
+                            onclick=self.link.callback(move |_| WsMsg::Send(mk_ping()))>
+                        { "Send To WebSocket" }
+                    </button>
+                    <button class=("button", "is-danger is-outlined")
+                            disabled=self.ws.is_none()
+                            onclick=self.link.callback(|_| WsMsg::Close)>
+                        { "Close WebSocket connection" }
+                    </button>
+                </div>
             </>
         }
     }

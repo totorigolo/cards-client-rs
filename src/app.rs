@@ -1,13 +1,15 @@
 use log::*;
-use serde::{Deserialize, Serialize};
 use yew::format::Json;
 use yew::prelude::*;
 use yew::services::storage::{Area, StorageService};
 use yew_router::prelude::*;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 use crate::components;
 use crate::pages;
 use crate::routes::*;
+use crate::state::State;
 
 const KEY: &str = "cards-client-rs.state";
 
@@ -16,12 +18,9 @@ pub struct App {
     link: ComponentLink<Self>,
 
     storage: StorageService,
-    state: State,
+    state: Rc<RefCell<State>>,
     _router_agent: Box<dyn Bridge<RouteAgent<()>>>,
 }
-
-#[derive(Serialize, Deserialize, Default)]
-pub struct State {}
 
 #[derive(Debug)]
 pub enum Msg {
@@ -48,7 +47,7 @@ impl Component for App {
         App {
             link,
             storage,
-            state,
+            state: Rc::new(RefCell::new(state)),
             _router_agent: router_agent,
         }
     }
@@ -64,12 +63,14 @@ impl Component for App {
             }
             Msg::Ignore => return false,
         }
-        self.storage.store(KEY, Json(&self.state));
+        let state_to_write = &*self.state.borrow();
+        self.storage.store(KEY, Json(state_to_write));
         true
     }
 
     fn view(&self) -> Html {
-        trace!("Rendered.");
+        let state_inner = self.state.clone();
+        let state = move || state_inner.clone();
 
         html! {
             <>
@@ -87,10 +88,10 @@ impl Component for App {
                     <div class="container">
                         <div class="box">
                             <Router<AppRoute>
-                                render = Router::render(|route: AppRoute| {
+                                render = Router::render(move |route: AppRoute| {
                                     let page = match &route {
                                         AppRoute::Index => html!{ <pages::Index /> },
-                                        AppRoute::WsExperiment => html!{ <pages::WsExperiment /> },
+                                        AppRoute::WsExperiment => html!{ <pages::WsExperiment state=state() /> },
                                         AppRoute::Game(GameRoute::List) => html!{ <pages::ListGames /> },
                                         AppRoute::Game(GameRoute::Create) => html!{ <pages::CreateGame /> },
                                         AppRoute::Game(p @ GameRoute::Play { .. }) => html!{ "todo" },
@@ -117,7 +118,3 @@ impl Component for App {
         }
     }
 }
-
-impl App {}
-
-impl State {}

@@ -8,8 +8,8 @@ $purple: #8A4D76;
 $purple-darker: darken($purple, 10%);
 $pink: #FA7C91;
 $brown: #757763;
-$beige-light: #D0D1CD;
-$beige-lighter: #EFF0EB;
+$beige-light: rgb(134, 134, 131);
+$beige-lighter: rgb(203, 204, 199);
 
 // Update Bulma's global variables
 $family-sans-serif: "Nunito", sans-serif;
@@ -26,7 +26,9 @@ $control-border-width: 2px;
 $input-border-color: transparent;
 $input-shadow: none;
 
+// Some additional colors
 $body-background-color: $purple-darker;
+$input-border-color: $brown;
 
 // TODO: Import only what you need from Bulma
 // @import "../node_modules/bulma/sass/utilities/_all.sass";

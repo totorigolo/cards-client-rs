@@ -5,6 +5,7 @@ mod app;
 mod components;
 mod pages;
 mod routes;
+mod state;
 
 use wasm_bindgen::prelude::*;
 

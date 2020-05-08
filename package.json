@@ -15,6 +15,7 @@
     },
     "devDependencies": {
         "@wasm-tool/wasm-pack-plugin": "^1.2.0",
+        "bulma": "^0.8.2",
         "copy-webpack-plugin": "^5.1.1",
         "css-loader": "^3.4.2",
         "html-webpack-plugin": "^4.0.4",
@@ -30,6 +31,5 @@
         "webpack": "^4.42.1",
         "webpack-cli": "^3.3.11",
         "webpack-dev-server": "^3.10.3"
-    },
-    "dependencies": {}
+    }
 }

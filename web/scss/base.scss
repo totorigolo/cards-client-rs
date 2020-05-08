@@ -1,5 +1,45 @@
-$body-color: blue;
+@charset "utf-8";
 
-body {
-  color: $body-color !important;
+$background-color: #1a3e95;
+
+html {
+  background-color: $background-color;
+}
+
+.site {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+.site-content {
+  flex: 1;
+}
+
+.notifications {
+  position: absolute;
+  right: 0;
+  margin: 2rem;
+  z-index: 100000;
+}
+
+.navbar-container > .box {
+  padding: .3rem 1.25rem .3rem 1.25rem !important;
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}
+
+.navbar-brand p {
+  color: #444;
+  font-style: bold;
+  font-family: Verdana, Geneva, sans-serif;
+  font-weight: bold;
+  box-shadow: 1 1 1 1;
+  font-size: 1.4em;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+  transform: rotate(-4deg);
+}
+
+.section {
+  padding-top: 0 !important;
 }

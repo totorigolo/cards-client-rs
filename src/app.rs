@@ -1,115 +1,35 @@
-use anyhow::Result;
 use log::*;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use yew::format::Json;
 use yew::prelude::*;
 use yew::services::storage::{Area, StorageService};
-use yew::services::websocket::{WebSocketService, WebSocketStatus, WebSocketTask};
+use yew_router::prelude::*;
+
+use crate::components;
+use crate::pages;
+use crate::routes::*;
 
 const KEY: &str = "cards-client-rs.state";
 
 pub struct App {
+    #[allow(unused)]
     link: ComponentLink<Self>,
+
     storage: StorageService,
     state: State,
-    ws_service: WebSocketService,
-    ws: WebSocketConnection,
-}
-
-#[derive(Debug)]
-pub enum WebSocketConnection {
-    None,
-    Pending(WebSocketTask),
-    Connected(WebSocketTask),
-}
-
-impl WebSocketConnection {
-    fn is_none(&self) -> bool {
-        match &self {
-            Self::None => true,
-            _ => false,
-        }
-    }
-
-    fn is_pending(&self) -> bool {
-        match &self {
-            Self::Pending(_) => true,
-            _ => false,
-        }
-    }
-
-    fn is_connected(&self) -> bool {
-        match &self {
-            Self::Connected(_) => true,
-            _ => false,
-        }
-    }
-
-    fn connected(&mut self) {
-        *self = match std::mem::replace(self, WebSocketConnection::None) {
-            WebSocketConnection::Pending(ws) => WebSocketConnection::Connected(ws),
-            ws => {
-                error!("Ignoring incoherent connected message, status is {:?}.", ws);
-                ws
-            }
-        };
-    }
+    _router_agent: Box<dyn Bridge<RouteAgent<()>>>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
-pub struct State {
-    value: String,
-}
+pub struct State {}
 
 #[derive(Debug)]
 pub enum Msg {
-    Update(String),
-    WebSocket(WsMsg),
+    // ChangeRoute(AppRoute),
+    RouteChanged(Route<()>),
     #[allow(unused)]
     Ignore,
 }
-
-#[derive(Debug)]
-pub enum WsMsg {
-    Close,
-    Closed,
-    Connect,
-    Connected,
-    ErrorOccurred,
-    Received(Result<WsResponse>),
-    Send(WsRequest),
-}
-
-// pub enum Msg {
-//     FetchData(Format, AsBinary),
-//     WsAction(WsAction),
-//     FetchReady(Result<DataFromFile, Error>),
-//     WsReady(Result<WsResponse, Error>),
-//     Ignore,
-// }
-
-impl From<WsMsg> for Msg {
-    fn from(msg: WsMsg) -> Self {
-        Msg::WebSocket(msg)
-    }
-}
-
-/// This type is used as a request which sent to websocket connection.
-#[derive(Serialize, Debug)]
-// struct WsRequest {
-//     #[serde(rename = "type")]
-//     _type: String,
-// }
-pub struct WsRequest(serde_json::Value);
-
-/// This type is an expected response from a websocket connection.
-#[derive(Deserialize, Debug)]
-// pub struct WsResponse {
-//     #[serde(rename = "type")]
-//     _type: String,
-// }
-pub struct WsResponse(serde_json::Value);
 
 impl Component for App {
     type Message = Msg;
@@ -120,17 +40,16 @@ impl Component for App {
 
         let state = match storage.restore(KEY) {
             Json(Ok(restored_state)) => restored_state,
-            _ => State {
-                ..Default::default()
-            },
+            _ => State::default(),
         };
+
+        let router_agent = RouteAgent::bridge(link.callback(Msg::RouteChanged));
 
         App {
             link,
             storage,
             state,
-            ws_service: WebSocketService::new(),
-            ws: WebSocketConnection::None,
+            _router_agent: router_agent,
         }
     }
 
@@ -139,51 +58,10 @@ impl Component for App {
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        trace!("Msg: {:?}", msg);
         match msg {
-            Msg::Update(val) => {
-                println!("Input: {}", val);
-                self.state.value = val;
+            Msg::RouteChanged(route) => {
+                debug!("Route changed: {}", route);
             }
-            Msg::WebSocket(action) => match action {
-                WsMsg::Connect => {
-                    let callback = self.link.callback(|Json(data)| WsMsg::Received(data));
-                    let notification = self.link.callback(|status| match status {
-                        WebSocketStatus::Opened => Msg::WebSocket(WsMsg::Connected),
-                        WebSocketStatus::Closed => Msg::WebSocket(WsMsg::Closed),
-                        WebSocketStatus::Error => Msg::WebSocket(WsMsg::ErrorOccurred),
-                    } as Msg);
-                    let task = self
-                        .ws_service
-                        .connect(&self.state.value, callback, notification)
-                        .unwrap();
-                    self.ws = WebSocketConnection::Pending(task);
-                }
-                WsMsg::Connected => {
-                    info!("WebSocket connected.");
-                    self.ws.connected();
-                }
-                WsMsg::Send(data) => {
-                    trace!("Sending on WS: {:?}", data);
-                    if let WebSocketConnection::Connected(ws) = &mut self.ws {
-                        ws.send(Json(&data));
-                    } else {
-                        error!("Tried to send on non-opened WS.");
-                    }
-                }
-                WsMsg::Received(data) => {
-                    //self.data = data.map(|data| data.value).ok();
-                    info!("Received: {:?}", data);
-                }
-                WsMsg::Close | WsMsg::Closed => {
-                    info!("WebSocket closed.");
-                    self.ws = WebSocketConnection::None;
-                }
-                WsMsg::ErrorOccurred => {
-                    error!("An error occurred on WebSocket.");
-                    self.ws = WebSocketConnection::None;
-                }
-            },
             Msg::Ignore => return false,
         }
         self.storage.store(KEY, Json(&self.state));
@@ -192,42 +70,48 @@ impl Component for App {
 
     fn view(&self) -> Html {
         trace!("Rendered.");
-        let mk_ping = || WsRequest(json!({"type": "PING"}));
+
         html! {
             <>
-                { self.view_input() }
-                <br/>
-                { &self.state.value }
-                <br/>
-                <button disabled=!self.ws.is_none()
-                        onclick=self.link.callback(|_| WsMsg::Connect)>
-                    { if self.ws.is_pending() { "Connecting to WebSocket..." } else { "Connect to WebSocket" } }
-                </button>
-                <br/>
-                <button disabled=!self.ws.is_connected()
-                        onclick=self.link.callback(move |_| WsMsg::Send(mk_ping()))>
-                    { "Send To WebSocket" }
-                </button>
-                <br/>
-                <button disabled=self.ws.is_none()
-                        onclick=self.link.callback(|_| WsMsg::Close)>
-                    { "Close WebSocket connection" }
-                </button>
+                <components::Notifications />
+
+                <div class="section">
+                    <div class="container navbar-container">
+                        <div class="box">
+                            <components::Navbar />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section site-content">
+                    <div class="container">
+                        <div class="box">
+                            <Router<AppRoute>
+                                render = Router::render(|route: AppRoute| {
+                                    match route {
+                                        AppRoute::Index => html!{ <pages::Index /> },
+                                        AppRoute::WsExperiment => html!{ <pages::WsExperiment /> },
+                                        AppRoute::Game(GameRoute::List) => html!{ <pages::ListGames /> },
+                                        AppRoute::Game(GameRoute::Create) => html!{ <pages::CreateGame /> },
+                                        AppRoute::Game(p @ GameRoute::Play { .. }) => html!{ "todo" },
+                                    }
+                                })
+                                redirect = Router::redirect(|_: Route| AppRoute::Index)
+                                />
+                        </div>
+                    </div>
+                </div>
+
+                <footer class="footer">
+                    <div class="content has-text-centered">
+                        <p>{ "Wonderful footer" }</p>
+                    </div>
+                </footer>
             </>
         }
     }
 }
 
-impl App {
-    fn view_input(&self) -> Html {
-        html! {
-            <input class="parrot"
-                   placeholder="Type anything here..."
-                   value=&self.state.value
-                   oninput=self.link.callback(|e: InputData| Msg::Update(e.value))
-                   />
-        }
-    }
-}
+impl App {}
 
 impl State {}

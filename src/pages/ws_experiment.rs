@@ -2,15 +2,15 @@ use anyhow::Result;
 use log::*;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::cell::RefCell;
+use std::rc::Rc;
 use yew::format::Json;
 use yew::prelude::*;
 use yew::services::websocket::{WebSocketService, WebSocketStatus, WebSocketTask};
-use std::cell::RefCell;
-use std::rc::Rc;
 
 use crate::agents::notifications::*;
-use crate::state::State;
 use crate::components::NeqAssign;
+use crate::state::State;
 
 pub struct WsExperiment {
     link: ComponentLink<Self>,
@@ -141,10 +141,7 @@ impl Component for WsExperiment {
                         WebSocketStatus::Error => Msg::WebSocket(WsMsg::ErrorOccurred),
                     } as Msg);
                     let addr = &self.state.borrow().ws_server_addr;
-                    match self
-                        .ws_service
-                        .connect(addr, callback, notification)
-                    {
+                    match self.ws_service.connect(addr, callback, notification) {
                         Ok(task) => {
                             self.ws_history.push(format!("Connecting to {}...", addr));
                             self.ws = WebSocketConnection::Pending(task);
@@ -192,7 +189,13 @@ impl Component for WsExperiment {
 
     fn view(&self) -> Html {
         let mk_ping = || WsRequest(json!({"type": "PING"}));
-        let loading_class = { if self.ws.is_pending() { "is-loading" } else { "" } };
+        let loading_class = {
+            if self.ws.is_pending() {
+                "is-loading"
+            } else {
+                ""
+            }
+        };
         html! {
             <>
                 <div class="field">

@@ -102,14 +102,14 @@ impl From<GameRoute> for AppRoute {
 // impl<T: Routable> ToNavLink for T {}
 
 pub trait BreadcrumbComponent {
-    fn render_in_breadcrumb(&self) -> bool{
+    fn render_in_breadcrumb(&self) -> bool {
         true
     }
 
     fn breadcrumb_name(&self) -> &'static str;
     fn breadcrumb_route(&self) -> AppRoute;
 
-    fn breadcrumb_child(&self) -> Option<&dyn BreadcrumbComponent>{
+    fn breadcrumb_child(&self) -> Option<&dyn BreadcrumbComponent> {
         None
     }
 }
@@ -156,15 +156,17 @@ pub trait Breadcrumb {
         let components = self.breadcrumb_components();
         if let Some(((last_name, last_route), rest)) = components.split_last() {
             html! {
-                <nav class="breadcrumb" aria-label="breadcrumbs">
-                    <ul>
-                        <li><a href="#">{ "The Game" }</a></li>
-                        { for rest.iter().map(|(n, r)| html! { <NavLink route=r>{ n }</NavLink> }) }
-                        <li class="is-active"><NavLink route=last_route>{ last_name }</NavLink></li>
-                    </ul>
-                </nav>
-             }
-        } else { html! {} }
+               <nav class="breadcrumb" aria-label="breadcrumbs">
+                   <ul>
+                       <li><a href="#">{ "The Game" }</a></li>
+                       { for rest.iter().map(|(n, r)| html! { <NavLink route=r>{ n }</NavLink> }) }
+                       <li class="is-active"><NavLink route=last_route>{ last_name }</NavLink></li>
+                   </ul>
+               </nav>
+            }
+        } else {
+            html! {}
+        }
     }
 }
 
@@ -174,7 +176,10 @@ impl<T: BreadcrumbComponent> Breadcrumb for T {
 
         let mut child = Some(self as &dyn BreadcrumbComponent);
         while child.is_some() {
-            components.push((child.unwrap().breadcrumb_name(), child.unwrap().breadcrumb_route()));
+            components.push((
+                child.unwrap().breadcrumb_name(),
+                child.unwrap().breadcrumb_route(),
+            ));
             child = child.unwrap().breadcrumb_child();
         }
 

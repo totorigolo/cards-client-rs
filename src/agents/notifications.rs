@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use yew::worker::*;
 
 // Re-export this for convenience
-pub use yew::agent::{Dispatcher, Dispatched};
+pub use yew::agent::{Dispatched, Dispatcher};
 
 pub struct NotificationBus {
     link: AgentLink<Self>,

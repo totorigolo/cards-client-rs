@@ -1,10 +1,10 @@
 use log::*;
+use std::cell::RefCell;
+use std::rc::Rc;
 use yew::format::Json;
 use yew::prelude::*;
 use yew::services::storage::{Area, StorageService};
 use yew_router::prelude::*;
-use std::rc::Rc;
-use std::cell::RefCell;
 
 use crate::components;
 use crate::pages;
@@ -24,10 +24,7 @@ pub struct App {
 
 #[derive(Debug)]
 pub enum Msg {
-    // ChangeRoute(AppRoute),
     RouteChanged(Route<()>),
-    #[allow(unused)]
-    Ignore,
 }
 
 impl Component for App {
@@ -61,7 +58,6 @@ impl Component for App {
             Msg::RouteChanged(route) => {
                 debug!("Route changed: {}", route);
             }
-            Msg::Ignore => return false,
         }
         let state_to_write = &*self.state.borrow();
         self.storage.store(KEY, Json(state_to_write));

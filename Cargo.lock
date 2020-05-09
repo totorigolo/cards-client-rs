@@ -735,9 +735,8 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "yew"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7532a83ec6c2173cd72888bb3ac0e3656d0dd152476f71631f4b465481855391"
+version = "0.16.0"
+source = "git+https://github.com/yewstack/yew?branch=v0.16.0#d95b196b504d744f97da15182fc8ab85496a1d41"
 dependencies = [
  "anyhow",
  "anymap",
@@ -766,9 +765,8 @@ dependencies = [
 
 [[package]]
 name = "yew-macro"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28cf0535e956932124a66721a0f91a1f65a1654ab509c43c3b5d71eb10f20089"
+version = "0.16.0"
+source = "git+https://github.com/yewstack/yew?branch=v0.16.0#d95b196b504d744f97da15182fc8ab85496a1d41"
 dependencies = [
  "boolinator",
  "lazy_static",
@@ -781,8 +779,7 @@ dependencies = [
 [[package]]
 name = "yew-router"
 version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30c14c320554af8f6c9412606daca46e9fdac686b6be6f3563e7f4073c628f8e"
+source = "git+https://github.com/yewstack/yew?branch=v0.16.0#d95b196b504d744f97da15182fc8ab85496a1d41"
 dependencies = [
  "cfg-if",
  "cfg-match",
@@ -802,8 +799,7 @@ dependencies = [
 [[package]]
 name = "yew-router-macro"
 version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88820ce667e8b1b17750c2294e69dc93932bdcfd76a7fec5b7b573131f3421c1"
+source = "git+https://github.com/yewstack/yew?branch=v0.16.0#d95b196b504d744f97da15182fc8ab85496a1d41"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -814,8 +810,7 @@ dependencies = [
 [[package]]
 name = "yew-router-route-parser"
 version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3c4708315d2325182b9c3d8c9805e4f5293baf6e6103f9cd4f989ddedca192a"
+source = "git+https://github.com/yewstack/yew?branch=v0.16.0#d95b196b504d744f97da15182fc8ab85496a1d41"
 dependencies = [
  "nom",
 ]

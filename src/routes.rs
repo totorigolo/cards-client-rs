@@ -52,9 +52,9 @@ pub trait Breadcrumb {
             html! {
                <nav class="breadcrumb" aria-label="breadcrumbs">
                    <ul>
-                       { render_component(crate::constants::SITE_NAME, AppRoute::Index, "") }
-                       { for rest.into_iter().map(|(n, r)| render_component(n, r, "")) }
-                       { render_component(last_name, last_route, "is-active") }
+                       { render_component(crate::constants::SITE_NAME, AppRoute::Index, None) }
+                       { for rest.into_iter().map(|(n, r)| render_component(n, r, None)) }
+                       { render_component(last_name, last_route, Some("is-active")) }
                    </ul>
                </nav>
             }

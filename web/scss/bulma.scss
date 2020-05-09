@@ -30,6 +30,16 @@ $input-shadow: none;
 $body-background-color: $purple-darker;
 $input-border-color: $brown;
 
+// Sticky footer
+html, body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+body > footer {
+    margin-top: auto;
+}
+
 // TODO: Import only what you need from Bulma
 // @import "../node_modules/bulma/sass/utilities/_all.sass";
 // @import "../node_modules/bulma/sass/base/_all.sass";

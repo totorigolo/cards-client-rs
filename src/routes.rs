@@ -2,7 +2,7 @@ use derive_more::Display;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-#[derive(Switch, Debug, Clone, Display)]
+#[derive(Switch, Debug, Clone, Display, PartialEq)]
 pub enum AppRoute {
     #[to = "/!"]
     #[display(fmt = "/")]
@@ -27,6 +27,10 @@ pub enum AppRoute {
     #[to = "/game/play/{game_id}?as={player_id}"]
     #[display(fmt = "/game/play/{}?as={}", game_id, player_id)]
     PlayGame { game_id: String, player_id: String },
+
+    #[to = "/not_found{*}"]
+    #[display(fmt = "/not_found{}", _0)]
+    NotFound(String),
 }
 
 #[allow(unused)]
@@ -36,14 +40,11 @@ pub type NavBtn = RouterButton<AppRoute>;
 pub type NavLink = RouterAnchor<AppRoute>;
 
 pub trait Breadcrumb {
-    fn breadcrumb_components(&self) -> Vec<(&'static str, Option<AppRoute>)>;
+    fn breadcrumb_components(&self) -> Vec<(&'static str, AppRoute)>;
 
     fn render_breadcrumb(&self) -> Html {
-        let render_component = |name, route: Option<AppRoute>, class| {
-            match route {
-                Some(route) => html! { <li class=class><NavLink route=route>{ name }</NavLink></li> },
-                None => html! { <li class=class>{ name }</li> },
-            }
+        let render_component = |name, route, class| match route {
+            route => html! { <li class=class><NavLink route=route>{ name }</NavLink></li> },
         };
 
         let mut components = self.breadcrumb_components();
@@ -51,7 +52,7 @@ pub trait Breadcrumb {
             html! {
                <nav class="breadcrumb" aria-label="breadcrumbs">
                    <ul>
-                       { render_component(crate::constants::SITE_NAME, Some(AppRoute::Index), "") }
+                       { render_component(crate::constants::SITE_NAME, AppRoute::Index, "") }
                        { for rest.into_iter().map(|(n, r)| render_component(n, r, "")) }
                        { render_component(last_name, last_route, "is-active") }
                    </ul>
@@ -64,14 +65,21 @@ pub trait Breadcrumb {
 }
 
 impl Breadcrumb for AppRoute {
-    fn breadcrumb_components(&self) -> Vec<(&'static str, Option<AppRoute>)> {
+    fn breadcrumb_components(&self) -> Vec<(&'static str, AppRoute)> {
         match self {
-            AppRoute::Index => vec![("Index", None)],
-            AppRoute::WsExperiment => vec![("WebSocket experiment", None)],
-            AppRoute::ListGames => vec![("Games", Some(AppRoute::ListGames)), ("List games", None)],
-            AppRoute::CreateGame => vec![("Games", Some(AppRoute::ListGames)), ("Create game", None)],
-            AppRoute::JoinGame { .. } => vec![("Games", Some(AppRoute::ListGames)), ("Joining game", None)],
-            AppRoute::PlayGame { .. } => vec![("Games", Some(AppRoute::ListGames)), ("Play game", None)],
+            AppRoute::Index => vec![("Index", self.clone())],
+            AppRoute::WsExperiment => vec![("WebSocket experiment", self.clone())],
+            AppRoute::ListGames => vec![("Games", AppRoute::ListGames), ("List games", self.clone())],
+            AppRoute::CreateGame => {
+                vec![("Games", AppRoute::ListGames), ("Create game", self.clone())]
+            }
+            AppRoute::JoinGame { .. } => {
+                vec![("Games", AppRoute::ListGames), ("Joining game", self.clone())]
+            }
+            AppRoute::PlayGame { .. } => {
+                vec![("Games", AppRoute::ListGames), ("Play game", self.clone())]
+            }
+            AppRoute::NotFound(_) => vec![("Not found", self.clone())],
         }
     }
 }

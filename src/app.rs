@@ -94,6 +94,8 @@ impl Component for App {
                                             html!{ <pages::JoiningGame game_id=game_id username=username /> },
                                         AppRoute::PlayGame { game_id, player_id } =>
                                             html!{ <pages::PlayGame game_id=game_id player_id=player_id /> },
+                                        AppRoute::NotFound(route) =>
+                                            html!{ <pages::NotFound route=route /> },
                                     };
                                     html! {
                                         <>
@@ -102,7 +104,7 @@ impl Component for App {
                                         </>
                                     }
                                 })
-                                redirect = Router::redirect(|_: Route| AppRoute::Index)
+                                redirect = Router::redirect(|r: Route<_>| AppRoute::NotFound(r.to_string()))
                                 />
                         </div>
                     </div>

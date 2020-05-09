@@ -2,7 +2,7 @@ use yew::prelude::*;
 
 use crate::components::NeqAssign;
 
-pub struct JoiningGame {
+pub struct NotFound {
     props: Props,
 }
 
@@ -10,16 +10,15 @@ pub enum Msg {}
 
 #[derive(Properties, Clone, Debug, PartialEq)]
 pub struct Props {
-    pub game_id: String,
-    pub username: String,
+    pub route: String,
 }
 
-impl Component for JoiningGame {
+impl Component for NotFound {
     type Message = Msg;
     type Properties = Props;
 
     fn create(props: Self::Properties, _link: ComponentLink<Self>) -> Self {
-        JoiningGame { props }
+        NotFound { props }
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
@@ -33,9 +32,8 @@ impl Component for JoiningGame {
     fn view(&self) -> Html {
         html! {
             <>
-                <h2 class="title is-size-4">{ "Joining game" }</h2>
-                <p>{ "Game ID: " }{ &self.props.game_id }</p>
-                <p>{ "Player name: " }{ &self.props.username }</p>
+                <h2 class="title is-size-4">{ "Route not found" }</h2>
+                <p>{ "URL: " }{ &self.props.route }</p>
             </>
         }
     }

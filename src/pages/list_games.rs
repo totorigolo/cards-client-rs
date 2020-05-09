@@ -42,11 +42,10 @@ impl Component for ListGames {
     fn view(&self) -> Html {
         use crate::html::*;
 
-        let join_route: AppRoute = GameRoute::Join {
+        let join_route: AppRoute = AppRoute::JoinGame {
             game_id: self.game_id.clone(),
             username: self.username.clone(),
-        }
-        .into();
+        };
 
         let game_id_changed = self
             .link

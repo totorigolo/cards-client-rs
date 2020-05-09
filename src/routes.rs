@@ -12,28 +12,21 @@ pub enum AppRoute {
     #[display(fmt = "/ws_experiment")]
     WsExperiment,
 
-    #[to = "/game{*:rest}"]
-    #[display(fmt = "/game{}", _0)]
-    Game(GameRoute),
-}
+    #[to = "/game/list"]
+    #[display(fmt = "/game/list")]
+    ListGames,
 
-#[derive(Switch, Debug, Clone, Display)]
-pub enum GameRoute {
-    #[to = "/list"]
-    #[display(fmt = "/list")]
-    List,
+    #[to = "/game/create"]
+    #[display(fmt = "/game/create")]
+    CreateGame,
 
-    #[to = "/create"]
-    #[display(fmt = "/create")]
-    Create,
+    #[to = "/game/join/{game_id}?as={username}"]
+    #[display(fmt = "/game/{}?as={}", game_id, username)]
+    JoinGame { game_id: String, username: String },
 
-    #[to = "/join/{game_id}/{username}"]
-    #[display(fmt = "/join/{}/{}", game_id, username)]
-    Join { game_id: String, username: String },
-
-    #[to = "/play/{game_id}/{player_id}"]
-    #[display(fmt = "/play/{}/{}", game_id, player_id)]
-    Play { game_id: String, player_id: String },
+    #[to = "/game/play/{game_id}?as={player_id}"]
+    #[display(fmt = "/game/play/{}?as={}", game_id, player_id)]
+    PlayGame { game_id: String, player_id: String },
 }
 
 #[allow(unused)]
@@ -42,130 +35,25 @@ pub type NavBtn = RouterButton<AppRoute>;
 #[allow(unused)]
 pub type NavLink = RouterAnchor<AppRoute>;
 
-impl From<GameRoute> for AppRoute {
-    fn from(game: GameRoute) -> AppRoute {
-        AppRoute::Game(game)
-    }
-}
-
-// pub trait Routable {
-//     fn get_route_name(&self) -> String;
-//
-//     fn get_route(&self) -> AppRoute;
-// }
-//
-// impl Routable for AppRoute {
-//     fn get_route_name(&self) -> String {
-//         match self {
-//             AppRoute::Index => "Index",
-//             AppRoute::WsExperiment => "WebSocket experiment",
-//             AppRoute::Game(_) => "Game",
-//         }.into()
-//     }
-//
-//     fn get_route(&self) -> AppRoute {
-//         self.clone()
-//     }
-// }
-//
-// impl Routable for GameRoute {
-//     fn get_route_name(&self) -> String {
-//         match self {
-//             GameRoute::List => "List games",
-//             GameRoute::Create => "Create game",
-//             GameRoute::Play { .. } => "Play game",
-//         }.into()
-//     }
-//
-//     fn get_route(&self) -> AppRoute {
-//         self.clone().into()
-//     }
-// }
-//
-// pub trait ToNavBtn: Routable {
-//     fn to_nav_btn<C: ToString>(&self, classes: C) -> Html {
-//         html! {
-//             <NavBtn classes=classes.to_string() route=self.get_route()>
-//                 { self.get_route_name() }
-//             </NavBtn>
-//         }
-//     }
-// }
-//
-// pub trait ToNavLink: Routable {
-//     fn to_nav_link<C: ToString>(&self, classes: C) -> Html {
-//         html! {
-//             <NavLink classes=classes.to_string() route=self.get_route()>
-//                 { self.get_route_name() }
-//             </NavLink>
-//         }
-//     }
-// }
-//
-// impl<T: Routable> ToNavBtn for T {}
-// impl<T: Routable> ToNavLink for T {}
-
-pub trait BreadcrumbComponent {
-    fn render_in_breadcrumb(&self) -> bool {
-        true
-    }
-
-    fn breadcrumb_name(&self) -> &'static str;
-    fn breadcrumb_route(&self) -> AppRoute;
-
-    fn breadcrumb_child(&self) -> Option<&dyn BreadcrumbComponent> {
-        None
-    }
-}
-
-impl BreadcrumbComponent for AppRoute {
-    fn breadcrumb_name(&self) -> &'static str {
-        match self {
-            AppRoute::Index => "Index",
-            AppRoute::WsExperiment => "WebSocket experiment",
-            AppRoute::Game(_) => "Game",
-        }
-    }
-
-    fn breadcrumb_route(&self) -> AppRoute {
-        self.clone()
-    }
-
-    fn breadcrumb_child(&self) -> Option<&dyn BreadcrumbComponent> {
-        match self {
-            AppRoute::Game(game_route) => Some(game_route),
-            _ => None,
-        }
-    }
-}
-
-impl BreadcrumbComponent for GameRoute {
-    fn breadcrumb_name(&self) -> &'static str {
-        match self {
-            GameRoute::List => "List games",
-            GameRoute::Create => "Create game",
-            GameRoute::Join { .. } => "Joining game",
-            GameRoute::Play { .. } => "Play game",
-        }
-    }
-
-    fn breadcrumb_route(&self) -> AppRoute {
-        self.clone().into()
-    }
-}
-
 pub trait Breadcrumb {
-    fn breadcrumb_components(&self) -> Vec<(&'static str, AppRoute)>;
+    fn breadcrumb_components(&self) -> Vec<(&'static str, Option<AppRoute>)>;
 
     fn render_breadcrumb(&self) -> Html {
-        let components = self.breadcrumb_components();
-        if let Some(((last_name, last_route), rest)) = components.split_last() {
+        let render_component = |name, route: Option<AppRoute>, class| {
+            match route {
+                Some(route) => html! { <li class=class><NavLink route=route>{ name }</NavLink></li> },
+                None => html! { <li class=class>{ name }</li> },
+            }
+        };
+
+        let mut components = self.breadcrumb_components();
+        if let (Some((last_name, last_route)), rest) = (components.pop(), components) {
             html! {
                <nav class="breadcrumb" aria-label="breadcrumbs">
                    <ul>
-                       <li><NavLink route=AppRoute::Index>{ crate::constants::SITE_NAME }</NavLink></li>
-                       { for rest.iter().map(|(n, r)| html! { <li><NavLink route=r>{ n }</NavLink></li> }) }
-                       <li class="is-active"><NavLink route=last_route>{ last_name }</NavLink></li>
+                       { render_component(crate::constants::SITE_NAME, Some(AppRoute::Index), "") }
+                       { for rest.into_iter().map(|(n, r)| render_component(n, r, "")) }
+                       { render_component(last_name, last_route, "is-active") }
                    </ul>
                </nav>
             }
@@ -175,19 +63,15 @@ pub trait Breadcrumb {
     }
 }
 
-impl<T: BreadcrumbComponent> Breadcrumb for T {
-    fn breadcrumb_components(&self) -> Vec<(&'static str, AppRoute)> {
-        let mut components = vec![];
-
-        let mut child = Some(self as &dyn BreadcrumbComponent);
-        while child.is_some() {
-            components.push((
-                child.unwrap().breadcrumb_name(),
-                child.unwrap().breadcrumb_route(),
-            ));
-            child = child.unwrap().breadcrumb_child();
+impl Breadcrumb for AppRoute {
+    fn breadcrumb_components(&self) -> Vec<(&'static str, Option<AppRoute>)> {
+        match self {
+            AppRoute::Index => vec![("Index", None)],
+            AppRoute::WsExperiment => vec![("WebSocket experiment", None)],
+            AppRoute::ListGames => vec![("Games", Some(AppRoute::ListGames)), ("List games", None)],
+            AppRoute::CreateGame => vec![("Games", Some(AppRoute::ListGames)), ("Create game", None)],
+            AppRoute::JoinGame { .. } => vec![("Games", Some(AppRoute::ListGames)), ("Joining game", None)],
+            AppRoute::PlayGame { .. } => vec![("Games", Some(AppRoute::ListGames)), ("Play game", None)],
         }
-
-        components
     }
 }

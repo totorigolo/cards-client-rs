@@ -88,11 +88,11 @@ impl Component for App {
                                     let page = match &route {
                                         AppRoute::Index => html!{ <pages::Index /> },
                                         AppRoute::WsExperiment => html!{ <pages::WsExperiment state=state() /> },
-                                        AppRoute::Game(GameRoute::List) => html!{ <pages::ListGames /> },
-                                        AppRoute::Game(GameRoute::Create) => html!{ <pages::CreateGame /> },
-                                        AppRoute::Game(GameRoute::Join { game_id, username }) =>
+                                        AppRoute::ListGames => html!{ <pages::ListGames /> },
+                                        AppRoute::CreateGame => html!{ <pages::CreateGame /> },
+                                        AppRoute::JoinGame { game_id, username } =>
                                             html!{ <pages::JoiningGame game_id=game_id username=username /> },
-                                        AppRoute::Game(GameRoute::Play { game_id, player_id }) =>
+                                        AppRoute::PlayGame { game_id, player_id } =>
                                             html!{ <pages::PlayGame game_id=game_id player_id=player_id /> },
                                     };
                                     html! {

@@ -139,7 +139,7 @@ impl Component for WsExperiment {
                         WebSocketStatus::Opened => Msg::WebSocket(WsMsg::Connected),
                         WebSocketStatus::Closed => Msg::WebSocket(WsMsg::Closed),
                         WebSocketStatus::Error => Msg::WebSocket(WsMsg::ErrorOccurred),
-                    } as Msg);
+                    });
                     let addr = &self.state.borrow().ws_server_addr;
                     match self.ws_service.connect(addr, callback, notification) {
                         Ok(task) => {

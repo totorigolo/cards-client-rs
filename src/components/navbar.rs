@@ -41,7 +41,7 @@ impl Component for Navbar {
             <nav class="navbar" role="navigation" aria-label="main navigation">
                 <div class="navbar-brand">
                     <NavLink route=AppRoute::Index classes="navbar-item">
-                        <p>{ "The Game" }</p>
+                        <p>{ crate::constants::SITE_NAME }</p>
                     </NavLink>
 
                     <a role="button"

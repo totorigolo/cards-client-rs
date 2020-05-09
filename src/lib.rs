@@ -3,6 +3,7 @@
 mod agents;
 mod app;
 mod components;
+mod constants;
 mod pages;
 mod routes;
 mod state;

@@ -158,8 +158,8 @@ pub trait Breadcrumb {
             html! {
                <nav class="breadcrumb" aria-label="breadcrumbs">
                    <ul>
-                       <li><a href="#">{ "The Game" }</a></li>
-                       { for rest.iter().map(|(n, r)| html! { <NavLink route=r>{ n }</NavLink> }) }
+                       <li><NavLink route=AppRoute::Index>{ crate::constants::SITE_NAME }</NavLink></li>
+                       { for rest.iter().map(|(n, r)| html! { <li><NavLink route=r>{ n }</NavLink></li> }) }
                        <li class="is-active"><NavLink route=last_route>{ last_name }</NavLink></li>
                    </ul>
                </nav>

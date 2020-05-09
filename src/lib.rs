@@ -4,6 +4,7 @@ mod agents;
 mod app;
 mod components;
 mod constants;
+mod html;
 mod pages;
 mod routes;
 mod state;

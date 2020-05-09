@@ -27,8 +27,12 @@ pub enum GameRoute {
     #[display(fmt = "/create")]
     Create,
 
-    #[to = "/join/{game_id}/{player_id}"]
-    #[display(fmt = "/join/{}/{}", game_id, player_id)]
+    #[to = "/join/{game_id}/{username}"]
+    #[display(fmt = "/join/{}/{}", game_id, username)]
+    Join { game_id: String, username: String },
+
+    #[to = "/play/{game_id}/{player_id}"]
+    #[display(fmt = "/play/{}/{}", game_id, player_id)]
     Play { game_id: String, player_id: String },
 }
 
@@ -140,6 +144,7 @@ impl BreadcrumbComponent for GameRoute {
         match self {
             GameRoute::List => "List games",
             GameRoute::Create => "Create game",
+            GameRoute::Join { .. } => "Joining game",
             GameRoute::Play { .. } => "Play game",
         }
     }

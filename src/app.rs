@@ -90,7 +90,10 @@ impl Component for App {
                                         AppRoute::WsExperiment => html!{ <pages::WsExperiment state=state() /> },
                                         AppRoute::Game(GameRoute::List) => html!{ <pages::ListGames /> },
                                         AppRoute::Game(GameRoute::Create) => html!{ <pages::CreateGame /> },
-                                        AppRoute::Game(p @ GameRoute::Play { .. }) => html!{ "todo" },
+                                        AppRoute::Game(GameRoute::Join { game_id, username }) =>
+                                            html!{ <pages::JoiningGame game_id=game_id username=username /> },
+                                        AppRoute::Game(GameRoute::Play { game_id, player_id }) =>
+                                            html!{ <pages::PlayGame game_id=game_id player_id=player_id /> },
                                     };
                                     html! {
                                         <>

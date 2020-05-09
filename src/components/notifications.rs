@@ -1,4 +1,6 @@
-use crate::agents::{Notification, NotificationBus, NotificationLevel, NotificationRequest};
+use crate::agents::notifications::{
+    Notification, NotificationBus, NotificationLevel, NotificationRequest,
+};
 use log::*;
 use yew::prelude::*;
 

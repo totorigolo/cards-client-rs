@@ -1,0 +1,39 @@
+# Both configurations assume that the game server is accessible.
+#
+# Ports:
+#  - 42800 -> dev
+#  - 42801 -> prod-like
+#  - 42802 -> game server API
+#  - 42803 -> WebPack Dev Server
+
+# Delegating to WebPack Dev Server on port 42803
+:42800 {
+  log
+
+  route /api/* {
+    uri strip_prefix /api
+    reverse_proxy localhost:42802
+  }
+
+  reverse_proxy * localhost:42803
+
+  # Enable compression
+  encode gzip zstd
+}
+
+# Production-like from ./dist
+:42801 {
+  route /api/* {
+    uri strip_prefix /api
+    reverse_proxy localhost:42802
+  }
+
+  root * ./dist
+  file_server
+
+  # If no file matches, serve the index (single page app support)
+  try_files {path} /index.html
+
+  # Enable compression
+  encode gzip zstd
+}

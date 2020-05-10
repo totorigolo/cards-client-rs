@@ -33,7 +33,7 @@ module.exports = (env, argv) => {
     devServer: {
       contentBase: absPath('dist'),
       compress: isProd,
-      port: 8000,
+      port: 42803,
       hot: !isProd,
       historyApiFallback: true,
     },

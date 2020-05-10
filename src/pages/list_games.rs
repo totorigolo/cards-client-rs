@@ -56,6 +56,9 @@ impl Component for ListGames {
 
         html! {
             <>
+                <p>{ "Join a game by entering the instance ID bellow (no list for now)." }</p>
+                <br />
+
                 { input_field("Game ID", "Enter the game ID here.", &self.game_id, game_id_changed) }
                 { input_field("Player name", "Enter your player name here.", &self.username, username_changed) }
 

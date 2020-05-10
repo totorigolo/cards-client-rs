@@ -57,7 +57,7 @@ impl Component for Navbar {
 
                 <div class=("navbar-menu", is_active)>
                     <NavLink classes="navbar-item" route=AppRoute::CreateGame>
-                        { "New game" }
+                        { "Start a game" }
                     </NavLink>
                     <NavLink classes="navbar-item" route=AppRoute::ListGames>
                         { "List games" }

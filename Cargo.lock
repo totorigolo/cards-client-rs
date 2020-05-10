@@ -735,8 +735,7 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "yew"
-version = "0.16.0"
-source = "git+https://github.com/yewstack/yew?branch=v0.16.0#d95b196b504d744f97da15182fc8ab85496a1d41"
+version = "0.15.0"
 dependencies = [
  "anyhow",
  "anymap",
@@ -765,8 +764,7 @@ dependencies = [
 
 [[package]]
 name = "yew-macro"
-version = "0.16.0"
-source = "git+https://github.com/yewstack/yew?branch=v0.16.0#d95b196b504d744f97da15182fc8ab85496a1d41"
+version = "0.15.0"
 dependencies = [
  "boolinator",
  "lazy_static",
@@ -779,7 +777,6 @@ dependencies = [
 [[package]]
 name = "yew-router"
 version = "0.12.1"
-source = "git+https://github.com/yewstack/yew?branch=v0.16.0#d95b196b504d744f97da15182fc8ab85496a1d41"
 dependencies = [
  "cfg-if",
  "cfg-match",
@@ -799,7 +796,6 @@ dependencies = [
 [[package]]
 name = "yew-router-macro"
 version = "0.12.0"
-source = "git+https://github.com/yewstack/yew?branch=v0.16.0#d95b196b504d744f97da15182fc8ab85496a1d41"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -810,7 +806,6 @@ dependencies = [
 [[package]]
 name = "yew-router-route-parser"
 version = "0.12.0"
-source = "git+https://github.com/yewstack/yew?branch=v0.16.0#d95b196b504d744f97da15182fc8ab85496a1d41"
 dependencies = [
  "nom",
 ]

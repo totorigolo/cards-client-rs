@@ -7,6 +7,7 @@ mod constants;
 mod html;
 mod pages;
 mod routes;
+mod services;
 mod state;
 
 use wasm_bindgen::prelude::*;

@@ -11,6 +11,7 @@
 
 use yew::html::ShouldRender;
 
+// TODO: Use yewtils's one
 pub trait NeqAssign {
     fn neq_assign(&mut self, new: Self) -> ShouldRender;
 }

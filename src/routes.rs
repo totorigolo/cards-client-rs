@@ -69,13 +69,17 @@ impl Breadcrumb for AppRoute {
         match self {
             AppRoute::Index => vec![("Index", self.clone())],
             AppRoute::WsExperiment => vec![("WebSocket experiment", self.clone())],
-            AppRoute::ListGames => vec![("Games", AppRoute::ListGames), ("List games", self.clone())],
-            AppRoute::CreateGame => {
-                vec![("Games", AppRoute::ListGames), ("Create game", self.clone())]
+            AppRoute::ListGames => {
+                vec![("Games", AppRoute::ListGames), ("List games", self.clone())]
             }
-            AppRoute::JoinGame { .. } => {
-                vec![("Games", AppRoute::ListGames), ("Joining game", self.clone())]
-            }
+            AppRoute::CreateGame => vec![
+                ("Games", AppRoute::ListGames),
+                ("Create game", self.clone()),
+            ],
+            AppRoute::JoinGame { .. } => vec![
+                ("Games", AppRoute::ListGames),
+                ("Joining game", self.clone()),
+            ],
             AppRoute::PlayGame { .. } => {
                 vec![("Games", AppRoute::ListGames), ("Play game", self.clone())]
             }

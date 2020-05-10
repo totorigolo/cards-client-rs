@@ -9,6 +9,7 @@
         "rust-lang.rust",
         "serayuzgur.crates",
         "streetsidesoftware.code-spell-checker",
-        "tyriar.sort-lines"
+        "tyriar.sort-lines",
+        "zamerick.vscode-caddyfile-syntax"
     ]
 }

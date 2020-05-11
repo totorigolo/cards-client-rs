@@ -62,9 +62,6 @@ impl Component for Navbar {
                     <NavLink classes="navbar-item" route=AppRoute::ListGames>
                         { "List games" }
                     </NavLink>
-                    <NavLink classes="navbar-item" route=AppRoute::WsExperiment>
-                        { "WebSocket test" }
-                    </NavLink>
 
                     <div class="navbar-start">
                         <div class="navbar-item has-dropdown is-hoverable">

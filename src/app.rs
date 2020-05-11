@@ -87,7 +87,6 @@ impl Component for App {
                                 render = Router::render(move |route: AppRoute| {
                                     let page = match &route {
                                         AppRoute::Index => html!{ <pages::Index /> },
-                                        AppRoute::WsExperiment => html!{ <pages::WsExperiment state=state() /> },
                                         AppRoute::ListGames => html!{ <pages::ListGames /> },
                                         AppRoute::CreateGame => html!{ <pages::CreateGame /> },
                                         AppRoute::JoinGame { game_id, username } =>
@@ -115,6 +114,14 @@ impl Component for App {
                         <p>{ "Wonderful footer" }</p>
                     </div>
                 </footer>
+
+                <div class="section site-content">
+                    <div class="container">
+                        <div class="box">
+                            <components::WebSocketDebugConsole />
+                        </div>
+                    </div>
+                </div>
             </>
         }
     }

@@ -16,6 +16,7 @@
         "bulma",
         "concat",
         "devtool",
+        "fullwidth",
         "hoverable",
         "notif",
         "onclick",
@@ -25,7 +26,8 @@
         "sourcemap",
         "todomvc",
         "wasm",
-        "webassembly"
+        "webassembly",
+        "yewtil"
     ],
     "files.autoSave": "onFocusChange"
 }

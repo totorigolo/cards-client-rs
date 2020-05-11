@@ -8,10 +8,6 @@ pub enum AppRoute {
     #[display(fmt = "/")]
     Index,
 
-    #[to = "/ws_experiment"]
-    #[display(fmt = "/ws_experiment")]
-    WsExperiment,
-
     #[to = "/game/list"]
     #[display(fmt = "/game/list")]
     ListGames,
@@ -68,7 +64,6 @@ impl Breadcrumb for AppRoute {
     fn breadcrumb_components(&self) -> Vec<(&'static str, AppRoute)> {
         match self {
             AppRoute::Index => vec![("Index", self.clone())],
-            AppRoute::WsExperiment => vec![("WebSocket experiment", self.clone())],
             AppRoute::ListGames => {
                 vec![("Games", AppRoute::ListGames), ("List games", self.clone())]
             }

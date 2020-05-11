@@ -1,6 +1,5 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use serde::Deserialize;
-use serde_json::json;
 use yew::callback::Callback;
 use yew::format::{Json, Nothing};
 use yew::services::fetch::{FetchService, Request, Response};
@@ -11,31 +10,31 @@ pub use yew::services::fetch::FetchTask;
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateRoundResponse {
-    id: String,
-    player_id: String,
-    game_id: String,
-    status: String,
-    created_on: String,
-    created_by: String,
-    min_players: u32,
-    max_players: u32,
-    public: bool,
-    players: Vec<String>,
+    pub id: String,
+    pub player_id: String,
+    pub game_id: String,
+    pub status: String,
+    pub created_on: String,
+    pub created_by: String,
+    pub min_players: u32,
+    pub max_players: u32,
+    pub public: bool,
+    pub players: Vec<String>,
 }
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct JoinRoundResponse {
-    id: String,
-    player_id: String,
-    game_id: String,
-    status: String,
-    created_on: String,
-    created_by: String,
-    min_players: u32,
-    max_players: u32,
-    public: bool,
-    players: Vec<String>,
+    pub id: String,
+    pub player_id: String,
+    pub game_id: String,
+    pub status: String,
+    pub created_on: String,
+    pub created_by: String,
+    pub min_players: u32,
+    pub max_players: u32,
+    pub public: bool,
+    pub players: Vec<String>,
 }
 
 #[derive(Default)]
@@ -94,7 +93,7 @@ impl GameServerService {
             if meta.status.is_success() {
                 callback.emit(data)
             } else {
-                callback.emit(Err(anyhow!("error joining the round: {}", meta.status)))
+                callback.emit(Err(anyhow!("{}", meta.status)))
             }
         };
         self.web.fetch(request, handler.into()).unwrap()

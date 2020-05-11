@@ -1,16 +1,19 @@
 #![allow(unused_imports)] // TODO: Clean imports
 
 use anyhow::Result;
+use derive_more::From;
 use log::*;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use yew::format::Json;
 use yew::prelude::*;
-use yew::services::websocket::{WebSocketService, WebSocketStatus, WebSocketTask};
+use yew::services::websocket::{
+    WebSocketService, WebSocketStatus as YewWebSocketStatus, WebSocketTask,
+};
 use yew::worker::*;
 
 // Re-export this for convenience
-pub use yew::agent::{Dispatched, Dispatcher};
+pub use yew::agent::{Bridge, Bridged, Dispatched, Dispatcher};
 
 pub struct GameWsMgr {
     link: AgentLink<Self>,
@@ -29,71 +32,61 @@ pub enum WebSocketConnection {
     Connected(WebSocketTask),
 }
 
-impl WebSocketConnection {
-    fn is_none(&self) -> bool {
-        match &self {
-            Self::None => true,
-            _ => false,
-        }
-    }
-
-    fn is_pending(&self) -> bool {
-        match &self {
-            Self::Pending(_) => true,
-            _ => false,
-        }
-    }
-
-    fn is_connected(&self) -> bool {
-        match &self {
-            Self::Connected(_) => true,
-            _ => false,
-        }
-    }
-
-    fn connected(&mut self) {
-        *self = match std::mem::replace(self, WebSocketConnection::None) {
-            WebSocketConnection::Pending(ws) => WebSocketConnection::Connected(ws),
-            ws => {
-                error!("Ignoring incoherent connected message, status is {:?}.", ws);
-                ws
-            }
-        };
-    }
-}
-
 #[derive(Debug)]
 pub enum Msg {
     FailedToConnect(String),
-    WsNotification(WebSocketStatus),
+    WsNotification(YewWebSocketStatus),
     WsReceived(Result<WsResponse>), // TODO: Try use Cow or Rc
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum GameWsRequest {
-    ConnectSocket { address: String },
     CloseSocket,
+    JoinRound { game_id: String, player_id: String },
     Send(WsRequest),
+    GetWebSocketStatus,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, From)]
 pub enum GameWsResponse {
     Closed,
-    Connecting,
     Connected,
-    FailedToConnect(String),
+    Connecting,
     ErrorOccurred,
+    FailedToConnect(String),
     Received(WsResponse),
     ReceivedError(String), // TODO: Refine error type
+    #[from]
+    WebSocketStatus(WebSocketStatus),
+}
+
+/// Represents the state of the WebSocket. Differs from WebSocketConnection in
+/// that this is sent to subscribers, when WebSocketConnection holds the actual
+/// connection.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum WebSocketStatus {
+    NotConnected,
+    Pending,
+    Connected,
+}
+
+impl From<&WebSocketConnection> for WebSocketStatus {
+    fn from(conn: &WebSocketConnection) -> Self {
+        match conn {
+            WebSocketConnection::None => WebSocketStatus::NotConnected,
+            WebSocketConnection::Pending(_) => WebSocketStatus::Pending,
+            WebSocketConnection::Connected(_) => WebSocketStatus::Connected,
+        }
+    }
 }
 
 /// This type is used as a request which sent to websocket connection.
 #[derive(Serialize, Deserialize, Debug)]
-pub struct WsRequest(serde_json::Value);
+pub struct WsRequest(pub serde_json::Value);
 
 /// This type is an expected response from a websocket connection.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct WsResponse(serde_json::Value);
+pub struct WsResponse(pub serde_json::Value);
 
 impl Agent for GameWsMgr {
     type Reach = Context;
@@ -118,10 +111,17 @@ impl Agent for GameWsMgr {
                 self.broadcast_to_subscribers(GameWsResponse::FailedToConnect(reason))
             }
             Msg::WsNotification(status) => {
+                let current_ws = std::mem::replace(&mut self.ws, WebSocketConnection::None);
+                self.ws = match (current_ws, &status) {
+                    (WebSocketConnection::Pending(ws), YewWebSocketStatus::Opened) => {
+                        WebSocketConnection::Connected(ws)
+                    }
+                    _ => WebSocketConnection::None,
+                };
                 let out = match status {
-                    WebSocketStatus::Opened => GameWsResponse::Connected,
-                    WebSocketStatus::Closed => GameWsResponse::Closed,
-                    WebSocketStatus::Error => GameWsResponse::ErrorOccurred,
+                    YewWebSocketStatus::Opened => GameWsResponse::Connected,
+                    YewWebSocketStatus::Closed => GameWsResponse::Closed,
+                    YewWebSocketStatus::Error => GameWsResponse::ErrorOccurred,
                 };
                 self.broadcast_to_subscribers(out);
             }
@@ -135,16 +135,30 @@ impl Agent for GameWsMgr {
         }
     }
 
-    fn handle_input(&mut self, input: Self::Input, _sender: HandlerId) {
-        trace!("Received in GameWsMgr from {:?}: {:?}", _sender, input);
+    fn handle_input(&mut self, input: Self::Input, sender: HandlerId) {
+        trace!("Received in GameWsMgr from {:?}: {:?}", sender, input);
         match input {
-            GameWsRequest::ConnectSocket { address } => {
+            GameWsRequest::JoinRound { game_id, player_id } => {
+                let url = format!("/api/round/{}/join?playerId={}", game_id, player_id);
+
+                let url = web_sys::Url::new_with_base(
+                    &url,
+                    &web_sys::window().unwrap().location().href().unwrap(),
+                )
+                .expect("TODO");
+                url.set_protocol("ws");
+                let url = url.href();
+                error!("URL: {:?}", url);
+                // url.protocol = url.protocol.replace('http', 'ws');
+                // url.href // => ws://www.example.com:9999/path/to/websocket
+
+                warn!("Connecting using URL: {}", url);
+
                 let callback = self.link.callback(|Json(data)| Msg::WsReceived(data));
                 let notification = self.link.callback(Msg::WsNotification);
-                match self.ws_service.connect(&address, callback, notification) {
+                match self.ws_service.connect(&url, callback, notification) {
                     Ok(task) => {
-                        self.ws_history
-                            .push(format!("Connecting to {}...", address));
+                        self.ws_history.push(format!("Connecting to {}...", url));
                         self.ws = WebSocketConnection::Pending(task);
 
                         self.broadcast_to_subscribers(GameWsResponse::Connecting);
@@ -170,6 +184,10 @@ impl Agent for GameWsMgr {
                 } else {
                     error!("Tried to send on non-opened WebSocket. Ignoring.");
                 }
+            }
+            GameWsRequest::GetWebSocketStatus => {
+                self.link
+                    .respond(sender, WebSocketStatus::from(&self.ws).into());
             }
         }
     }

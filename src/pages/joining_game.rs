@@ -1,70 +1,59 @@
-use anyhow::{Error, Result};
-use derive_more::From;
+use anyhow::Result;
 use log::*;
+use std::time::Duration;
 use yew::prelude::*;
+use yew::services::interval::IntervalService;
+use yew::services::Task;
+use yew_router::agent::{RouteAgentDispatcher, RouteRequest};
+use yew_router::route::Route;
 
 use crate::agents::game_ws_mgr::*;
+use crate::html;
+use crate::routes::AppRoute;
 use crate::services::game_server::*;
 
 pub struct JoiningGame {
     link: ComponentLink<Self>,
     game_server: GameServerService,
-    game_ws_mgr: Dispatcher<GameWsMgr>,
-    state: JoinState,
+    game_ws_mgr: Box<dyn Bridge<GameWsMgr>>,
+
+    current_task: Option<Box<dyn Task>>,
+
+    step: JoinStep,
+    game_id: String,
+    username: String,
 }
 
-enum JoinState {
-    WantToJoinGame {
-        game_id: String,
-        username: String,
-    },
-    JoiningGame {
-        game_id: String,
-        username: String,
-        fetch_task: FetchTask,
-    },
-    JoinedGameNoWebSocket {
-        game_id: String,
-        username: String,
-        player_id: String,
-    },
+#[derive(Debug)]
+pub enum JoinStep {
+    WantToJoinGame,
+    JoiningGame,
     JoinedGameWebSocketPending {
-        game_id: String,
-        username: String,
         player_id: String,
     },
     JoinedGameWithWebSocket {
-        game_id: String,
-        username: String,
         player_id: String,
     },
+    WaitingRedirect,
     JoinFailed {
-        game_id: String,
-        username: String,
-        error: Error,
+        player_id: Option<String>,
+        error: String,
     },
 
-    // This variant is almost a dummy one, temporarily used when changing state.
-    // Having this as the result of a transition means that the code panicked.
-    FatalError,
+    /// This variant is used when executing transitions. If it is observed
+    /// outside of a transition it means that the transition ended unexpectedly.
+    Failed,
 }
 
-#[derive(Debug, From)]
+#[derive(Debug)]
 pub enum Msg {
-    #[from]
-    Command(Command),
-    #[from]
-    Event(Event),
-}
+    // Commands
+    JoinRound,
 
-#[derive(Debug)]
-pub enum Command {
-    Progress,
-}
-
-#[derive(Debug)]
-pub enum Event {
+    // Events
     JoinRoundResponse(Result<JoinRoundResponse>),
+    GameWsResponse(GameWsResponse),
+    SuccessfullyJoined,
 }
 
 #[derive(Properties, Clone, Debug, PartialEq)]
@@ -78,234 +67,175 @@ impl Component for JoiningGame {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        link.send_message(Command::Progress);
+        error!("JoiningGame: created with {:?}", props);
+
+        link.send_message(Msg::JoinRound);
+        let game_ws_mgr_callback = link.callback(Msg::GameWsResponse);
         JoiningGame {
             link,
             game_server: GameServerService::new(),
-            game_ws_mgr: GameWsMgr::dispatcher(),
-
-            state: JoinState::WantToJoinGame {
-                game_id: props.game_id,
-                username: props.username,
-            },
+            game_ws_mgr: GameWsMgr::bridge(game_ws_mgr_callback),
+            current_task: None,
+            game_id: props.game_id,
+            username: props.username,
+            step: JoinStep::WantToJoinGame,
         }
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        self.state = JoinState::WantToJoinGame {
-            game_id: props.game_id,
-            username: props.username,
-        };
-        self.link.send_message(Command::Progress);
-        true
+        error!("JoiningGame: changed with {:?}", props);
+        // trace!("Changed: {:?}", props);
+        // self.game_id = props.game_id;
+        // self.username = props.username;
+        // self.step = JoinStep::WantToJoinGame;
+        // self.link.send_message(Msg::JoinRound);
+        // true
+        false
+    }
+
+    fn destroy(&mut self) {
+        error!("JoiningGame: destroyed");
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        trace!("Update: {:?}", msg);
-        match msg {
-            Msg::Command(Command::Progress) => match std::mem::replace(&mut self.state, JoinState::FatalError) {
-                JoinState::WantToJoinGame { game_id, username } => {
-                    let task = self.game_server.join_round(
-                        &game_id,
-                        &username,
-                        self.link.callback(Event::JoinRoundResponse),
-                    );
-                    self.state = JoinState::JoiningGame {
-                        game_id,
-                        username,
-                        fetch_task: task,
-                    };
-                }
-                JoinState::JoiningGame {
-                    game_id,
-                    username,
-                    fetch_task,
-                } => self.state = JoinState::JoinFailed { game_id, username, error: anyhow::anyhow!("JoiningGame") },
-                JoinState::JoinedGameNoWebSocket {
-                    game_id,
-                    username,
-                    player_id,
-                } =>  self.state = JoinState::JoinFailed { game_id, username, error: anyhow::anyhow!("JoinedGameNoWebSocket") },
-                JoinState::JoinedGameWebSocketPending {
-                    game_id,
-                    username,
-                    player_id,
-                } =>  self.state = JoinState::JoinFailed { game_id, username, error: anyhow::anyhow!("JoinedGameWebSocketPending") },
-                JoinState::JoinedGameWithWebSocket {
-                    game_id,
-                    username,
-                    player_id,
-                } =>  self.state = JoinState::JoinFailed { game_id, username, error: anyhow::anyhow!("JoinedGameWithWebSocket") },
-                JoinState::JoinFailed {
-                    game_id,
-                    username,
-                    error,
-                } =>  self.state = JoinState::JoinFailed { game_id, username, error: anyhow::anyhow!("JoinFailed") },
-                JoinState::FatalError => self.state = JoinState::FatalError,
+        trace!("JoiningGame: updated: {:?}", msg);
+        let current_step = std::mem::replace(&mut self.step, JoinStep::Failed);
+        self.step = match (current_step, msg) {
+            (JoinStep::WantToJoinGame, Msg::JoinRound) => {
+                self.current_task = Some(Box::new(self.game_server.join_round(
+                    &self.game_id,
+                    &self.username,
+                    self.link.callback(Msg::JoinRoundResponse),
+                )));
+                JoinStep::JoiningGame
+            }
+
+            (JoinStep::JoiningGame, Msg::JoinRoundResponse(Ok(response))) => {
+                let player_id = response.player_id;
+                self.game_ws_mgr.send(GameWsRequest::JoinRound {
+                    game_id: self.game_id.clone(),
+                    player_id: player_id.clone(),
+                });
+                JoinStep::JoinedGameWebSocketPending { player_id }
+            }
+            (step, Msg::JoinRoundResponse(Err(err))) => JoinStep::JoinFailed {
+                player_id: step.into_player_id_or_none(),
+                error: format!("error joining the round: {}", err),
             },
-            Msg::Event(event) => match event {
-                Event::JoinRoundResponse(Ok(response)) => {
-                    info!("Join succeeded: {:?}", response);
-                    self.link.send_message(Command::Progress);
-                }
-                Event::JoinRoundResponse(Err(err)) => self.state.to_failed(err),
+
+            (
+                JoinStep::JoinedGameWebSocketPending { player_id },
+                Msg::GameWsResponse(GameWsResponse::Connected),
+            ) => {
+                let duration = Duration::from_secs(3);
+                let callback = self.link.callback(|_| Msg::SuccessfullyJoined);
+                self.current_task =
+                    Some(Box::new(IntervalService::new().spawn(duration, callback)));
+
+                JoinStep::JoinedGameWithWebSocket { player_id }
+            }
+            (step, Msg::GameWsResponse(GameWsResponse::ErrorOccurred)) => JoinStep::JoinFailed {
+                player_id: step.into_player_id_or_none(),
+                error: "Unknown error occurred while connecting.".into(),
             },
-            // Msg::ConnectWebSocket => {
-            //     let addr = format!(
-            //         "ws://127.0.0.1:8080/round/{}/join?username={}",
-            //         self.props.game_id,
-            //         self.props.username,
-            //     );
-            // }
-        }
+            (step, Msg::GameWsResponse(GameWsResponse::FailedToConnect(reason))) => {
+                JoinStep::JoinFailed {
+                    player_id: step.into_player_id_or_none(),
+                    error: format!("Failed to connect: {}", reason),
+                }
+            }
+            (step, Msg::GameWsResponse(_)) => step,
+
+            (JoinStep::JoinedGameWithWebSocket { player_id, .. }, Msg::SuccessfullyJoined) => {
+                let route: Route = AppRoute::PlayGame {
+                    game_id: self.game_id.clone(),
+                    player_id,
+                }
+                .into();
+                RouteAgentDispatcher::new().send(RouteRequest::ChangeRoute(route));
+                JoinStep::WaitingRedirect
+            }
+
+            (step, command) => {
+                error!("Impossible transition: {:?}", (&step, &command));
+                step
+            }
+        };
+        trace!("New state: {:?}", self.step);
         true
     }
 
     fn view(&self) -> Html {
-        match &self.state {
-            JoinState::WantToJoinGame { game_id, username } => html! {
+        match &self.step {
+            JoinStep::WantToJoinGame => html! {
                 <>
                     <h3 class="title is-size-4">{ "Joining game..." }</h3>
-                    { progress_bar(1.0 / 5.0, "is-primary") }
-                    <p>{ "Game ID: " }{ game_id }</p>
-                    <p>{ "Player name: " }{ username }</p>
+                    { html::progress_bar(1.0 / 5.0, "is-primary") }
+                    <p>{ "Game ID: " }{ &self.game_id }</p>
+                    <p>{ "Player name: " }{ &self.username }</p>
                 </>
             },
-            JoinState::JoiningGame {
-                game_id, username, ..
-            } => html! {
+            JoinStep::JoiningGame { .. } => html! {
                 <>
                     <h3 class="title is-size-4">{ "Joining game..." }</h3>
-                    { progress_bar(2.0 / 5.0, "is-primary") }
-                    <p>{ "Game ID: " }{ game_id }</p>
-                    <p>{ "Player name: " }{ username }</p>
+                    { html::progress_bar(2.0 / 5.0, "is-primary") }
+                    <p>{ "Game ID: " }{ &self.game_id }</p>
+                    <p>{ "Player name: " }{ &self.username }</p>
                 </>
             },
-            JoinState::JoinedGameNoWebSocket {
-                game_id,
-                username,
-                player_id,
-            } => html! {
+            JoinStep::JoinedGameWebSocketPending { player_id } => html! {
                 <>
                     <h3 class="title is-size-4">{ "Starting session..." }</h3>
-                    { progress_bar(3.0 / 5.0, "is-primary") }
-                    <p>{ "Game ID: " }{ game_id }</p>
-                    <p>{ "Player name: " }{ username }</p>
+                    { html::progress_bar(3.0 / 5.0, "is-primary") }
+                    <p>{ "Game ID: " }{ &self.game_id }</p>
+                    <p>{ "Player name: " }{ &self.username }</p>
                     <p>{ "Player ID: " }{ player_id }</p>
                 </>
             },
-            JoinState::JoinedGameWebSocketPending {
-                game_id,
-                username,
-                player_id,
-            } => html! {
+            JoinStep::JoinedGameWithWebSocket { player_id, .. } => html! {
                 <>
-                    <h3 class="title is-size-4">{ "Starting session..." }</h3>
-                    { progress_bar(4.0 / 5.0, "is-primary") }
-                    <p>{ "Game ID: " }{ game_id }</p>
-                    <p>{ "Player name: " }{ username }</p>
+                    <h3 class="title is-size-4">{ "Connected! Almost there..." }</h3>
+                    { html::progress_bar(4.0 / 5.0, "is-primary") }
+                    <p>{ "Game ID: " }{ &self.game_id }</p>
+                    <p>{ "Player name: " }{ &self.username }</p>
                     <p>{ "Player ID: " }{ player_id }</p>
                 </>
             },
-            JoinState::JoinedGameWithWebSocket {
-                game_id,
-                username,
-                player_id,
-            } => html! {
+            JoinStep::WaitingRedirect => html! {
                 <>
-                    <h3 class="title is-size-4">{ "Connected! Just one moment..." }</h3>
-                    { progress_bar(5.0 / 5.0, "is-primary") }
-                    <p>{ "Game ID: " }{ game_id }</p>
-                    <p>{ "Player name: " }{ username }</p>
-                    <p>{ "Player ID: " }{ player_id }</p>
+                    <h3 class="title is-size-4">{ "Enjoy :)" }</h3>
+                    { html::progress_bar(5.0 / 5.0, "is-primary") }
+                    <p>{ "Game ID: " }{ &self.game_id }</p>
+                    <p>{ "Player name: " }{ &self.username }</p>
                 </>
             },
-            JoinState::JoinFailed {
-                game_id,
-                username,
-                error,
-            } => html! {
+            JoinStep::JoinFailed { player_id, error } => html! {
                 <>
                     <h3 class="title is-size-4">{ "Failed to connect." }</h3>
-                    { progress_bar(5.0 / 5.0, "is-danger") }
-                    <p>{ "Game ID: " }{ game_id }</p>
-                    <p>{ "Player name: " }{ username }</p>
+                    { html::progress_bar(1.0, "is-danger") }
+                    <p>{ "Game ID: " }{ &self.game_id }</p>
+                    <p>{ "Player name: " }{ &self.username }</p>
+                    <p>{ "Player ID: " }{ format!("{:?}", player_id) }</p>
                     <p>{ "Error: " }{ error }</p>
                 </>
             },
-            JoinState::FatalError => html! {
+            JoinStep::Failed => html! {
                 <>
                     <h3 class="title is-size-4">{ "Couldn't join, please retry later." }</h3>
-                    { progress_bar(5.0 / 5.0, "is-danger") }
+                    { html::progress_bar(1.0, "is-danger") }
                 </>
             },
         }
     }
 }
 
-/// Progress must be 0 <= x <= 1, or it will be clamped otherwise.
-fn progress_bar(progress: f32, class: impl AsRef<str>) -> Html {
-    let percentage = ((progress * 100.0).round() as u32).min(100).max(0);
-    html! {
-        <progress class=("progress", class.as_ref()) value=percentage max="100">{ percentage }{ "%" }</progress>
-    }
-}
-
-impl JoinState {
-    fn to_failed(&mut self, error: Error) {
-        let previous: JoinState = std::mem::replace(self, JoinState::FatalError);
-        *self = match previous {
-            JoinState::WantToJoinGame { game_id, username } => JoinState::JoinFailed {
-                game_id,
-                username,
-                error,
-            },
-            JoinState::JoiningGame {
-                game_id,
-                username,
-                ..
-            } => JoinState::JoinFailed {
-                game_id,
-                username,
-                error,
-            },
-            JoinState::JoinedGameNoWebSocket {
-                game_id,
-                username,
-                ..
-            } => JoinState::JoinFailed {
-                game_id,
-                username,
-                error,
-            },
-            JoinState::JoinedGameWebSocketPending {
-                game_id,
-                username,
-                ..
-            } => JoinState::JoinFailed {
-                game_id,
-                username,
-                error,
-            },
-            JoinState::JoinedGameWithWebSocket {
-                game_id,
-                username,
-                ..
-            } => JoinState::JoinFailed {
-                game_id,
-                username,
-                error,
-            },
-            JoinState::JoinFailed {
-                game_id,
-                username,
-                error: previous_error,
-            } => JoinState::JoinFailed {
-                game_id,
-                username,
-                error: error.context(previous_error),
-            },
-            JoinState::FatalError => JoinState::FatalError,
-        };
+impl JoinStep {
+    fn into_player_id_or_none(self) -> Option<String> {
+        match self {
+            JoinStep::JoinedGameWebSocketPending { player_id, .. } => Some(player_id),
+            JoinStep::JoinedGameWithWebSocket { player_id, .. } => Some(player_id),
+            JoinStep::JoinFailed { player_id, .. } => player_id,
+            _ => None,
+        }
     }
 }

@@ -74,7 +74,7 @@ pub enum NotificationLevel {
 }
 
 impl Agent for NotificationBus {
-    type Reach = Context;
+    type Reach = Context<Self>;
     type Message = ();
     type Input = NotificationRequest;
     type Output = NotificationRequest;

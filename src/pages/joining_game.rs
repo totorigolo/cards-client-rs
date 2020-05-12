@@ -93,10 +93,6 @@ impl Component for JoiningGame {
         false
     }
 
-    fn destroy(&mut self) {
-        error!("JoiningGame: destroyed");
-    }
-
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         trace!("JoiningGame: updated: {:?}", msg);
         let current_step = std::mem::replace(&mut self.step, JoinStep::Failed);

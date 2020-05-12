@@ -1,6 +1,9 @@
 use derive_more::From;
 use serde_json::json;
+use std::time::Duration;
 use yew::prelude::*;
+use yew::services::interval::IntervalService;
+use yew::services::Task;
 use yewtil::NeqAssign;
 
 use crate::agents::game_ws_mgr::*;
@@ -10,6 +13,7 @@ use crate::html;
 pub struct WebSocketDebugConsole {
     link: ComponentLink<Self>,
     notification_bus: Dispatcher<NotificationBus>,
+    refresh_task: Option<Box<dyn Task>>,
 
     ws_agent: Box<dyn Bridge<GameWsMgr>>,
     ws_status: WebSocketStatus,
@@ -58,6 +62,7 @@ impl Component for WebSocketDebugConsole {
         WebSocketDebugConsole {
             link,
             notification_bus: NotificationBus::dispatcher(),
+            refresh_task: None,
 
             ws_agent: GameWsMgr::bridge(ws_msg_callback),
             ws_status: WebSocketStatus::NotConnected,
@@ -78,6 +83,13 @@ impl Component for WebSocketDebugConsole {
             Msg::Command(command) => match command {
                 Command::Update => {
                     self.ws_agent.send(GameWsRequest::GetWebSocketStatus);
+
+                    // TODO: Fix Disconnect button issue before re-enabling this.
+                    // self.refresh_task = Some(Box::new(IntervalService::new().spawn(
+                    //     Duration::from_secs(5),
+                    //     self.link.callback(|_| Command::Update),
+                    // )));
+
                     false
                 }
                 Command::ConnectWebSocket => {

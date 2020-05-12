@@ -28,7 +28,7 @@ pub enum StateResponse {
 }
 
 impl Agent for StateMgr {
-    type Reach = Context;
+    type Reach = Context<Self>;
     type Message = ();
     type Input = StateRequest;
     type Output = StateResponse;

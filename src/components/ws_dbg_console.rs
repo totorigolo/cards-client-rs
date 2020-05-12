@@ -146,7 +146,8 @@ impl Component for WebSocketDebugConsole {
 
     fn view(&self) -> Html {
         let connected = self.ws_status == WebSocketStatus::Connected;
-        let loading_class = if connected { Some("is-loading") } else { None };
+        let pending = self.ws_status == WebSocketStatus::Pending;
+        let loading_class = if pending { Some("is-loading") } else { None };
 
         let on_game_id_change = self
             .link
@@ -159,7 +160,7 @@ impl Component for WebSocketDebugConsole {
             <div class="columns">
                 <div class="column is-two-thirds is-flex is-flex-column">
                     <h2 class="title is-size-4">{ "Message history" }</h2>
-                    <pre style="flex-grow: 1">
+                    <pre style="flex-grow: 1; white-space: pre-wrap;">
                         {
                             // TODO: Add keys
                             self.ws_history.join("\n")

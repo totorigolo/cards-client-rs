@@ -26,7 +26,16 @@ pub fn start() -> Result<(), JsValue> {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
-    wasm_logger::init(wasm_logger::Config::new(log::Level::Trace));
+    fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!("[{}] {}", record.target(), message))
+        })
+        .chain(fern::Output::call(console_log::log))
+        .level(log::LevelFilter::Info)
+        .level_for("cards_client_rs", log::LevelFilter::Trace)
+        .apply()
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
     yew::start_app::<app::App>();
     Ok(())
 }

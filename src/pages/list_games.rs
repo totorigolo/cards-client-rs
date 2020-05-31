@@ -1,5 +1,6 @@
 use yew::prelude::*;
 
+use crate::html::*;
 use crate::routes::*;
 
 pub struct ListGames {
@@ -40,8 +41,6 @@ impl Component for ListGames {
     }
 
     fn view(&self) -> Html {
-        use crate::html::*;
-
         let join_route: AppRoute = AppRoute::JoinGame {
             game_id: self.game_id.clone(),
             username: self.username.clone(),
@@ -59,8 +58,18 @@ impl Component for ListGames {
                 <p>{ "Join a game by entering the instance ID bellow (no list for now)." }</p>
                 <br />
 
-                { input_field("Game ID", "Enter the game ID here.", &self.game_id, game_id_changed) }
-                { input_field("Player name", "Enter your player name here.", &self.username, username_changed) }
+                <TextInputField
+                    label="Game ID"
+                    placeholder="Enter the ID of the round to join."
+                    value=&self.game_id
+                    oninput=game_id_changed
+                    />
+                <TextInputField
+                    label="Player name"
+                    placeholder="Enter your player name here."
+                    value=&self.username
+                    oninput=username_changed
+                    />
 
                 <div class="control">
                     // TODO: Disable this when empty fields

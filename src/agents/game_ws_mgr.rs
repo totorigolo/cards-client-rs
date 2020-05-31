@@ -23,11 +23,23 @@ pub struct GameWsMgr {
     ws: WebSocketConnection,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct GameWsConnectionInfo {
+    pub game_id: String,
+    pub player_id: String,
+}
+
 #[derive(Debug)]
 pub enum WebSocketConnection {
     None,
-    Pending(WebSocketTask),
-    Connected(WebSocketTask),
+    Pending {
+        info: GameWsConnectionInfo,
+        task: WebSocketTask,
+    },
+    Connected {
+        info: GameWsConnectionInfo,
+        task: WebSocketTask,
+    },
 }
 
 #[derive(Debug, From)]
@@ -48,8 +60,8 @@ pub enum GameWsRequest {
 #[derive(Serialize, Deserialize, Debug, Clone, From)]
 pub enum GameWsResponse {
     Closed,
-    Connected,
-    Connecting,
+    Connected(GameWsConnectionInfo),
+    Connecting(GameWsConnectionInfo),
     ErrorOccurred,
     FailedToConnect(String),
     Received(WsResponse),
@@ -64,16 +76,32 @@ pub enum GameWsResponse {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum WebSocketStatus {
     NotConnected,
-    Pending,
-    Connected,
+    Pending(GameWsConnectionInfo),
+    Connected(GameWsConnectionInfo),
+}
+
+impl WebSocketStatus {
+    pub fn is_pending(&self) -> bool {
+        match self {
+            WebSocketStatus::Pending(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_connected(&self) -> bool {
+        match self {
+            WebSocketStatus::Connected(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl From<&WebSocketConnection> for WebSocketStatus {
     fn from(conn: &WebSocketConnection) -> Self {
         match conn {
             WebSocketConnection::None => WebSocketStatus::NotConnected,
-            WebSocketConnection::Pending(_) => WebSocketStatus::Pending,
-            WebSocketConnection::Connected(_) => WebSocketStatus::Connected,
+            WebSocketConnection::Pending { info, .. } => WebSocketStatus::Pending(info.clone()),
+            WebSocketConnection::Connected { info, .. } => WebSocketStatus::Connected(info.clone()),
         }
     }
 }
@@ -105,17 +133,26 @@ impl Agent for GameWsMgr {
         match msg {
             Msg::WsNotification(status) => {
                 let current_ws = std::mem::replace(&mut self.ws, WebSocketConnection::None);
-                self.ws = match (current_ws, &status) {
-                    (WebSocketConnection::Pending(ws), YewWebSocketStatus::Opened) => {
-                        WebSocketConnection::Connected(ws)
+                let (ws, out) = match (current_ws, &status) {
+                    (WebSocketConnection::Pending { info, task }, YewWebSocketStatus::Opened) => {
+                        let info_clone = info.clone();
+                        (
+                            WebSocketConnection::Connected { info, task },
+                            GameWsResponse::Connected(info_clone),
+                        )
                     }
-                    _ => WebSocketConnection::None,
+                    (_, YewWebSocketStatus::Opened) => {
+                        log::error!("WebSocket opened but no pending connection, ignoring.");
+                        (WebSocketConnection::None, GameWsResponse::ErrorOccurred)
+                    }
+                    (_, YewWebSocketStatus::Closed) => {
+                        (WebSocketConnection::None, GameWsResponse::Closed)
+                    }
+                    (_, YewWebSocketStatus::Error) => {
+                        (WebSocketConnection::None, GameWsResponse::ErrorOccurred)
+                    }
                 };
-                let out = match status {
-                    YewWebSocketStatus::Opened => GameWsResponse::Connected,
-                    YewWebSocketStatus::Closed => GameWsResponse::Closed,
-                    YewWebSocketStatus::Error => GameWsResponse::ErrorOccurred,
-                };
+                self.ws = ws;
                 self.broadcast_to_subscribers(out);
             }
             Msg::WsReceived(data) => {
@@ -131,17 +168,29 @@ impl Agent for GameWsMgr {
     fn handle_input(&mut self, input: Self::Input, sender: HandlerId) {
         match input {
             GameWsRequest::JoinRound { game_id, player_id } => {
-                if let Err(e) = self.join_round(game_id, player_id) {
-                    self.link
-                        .respond(sender, GameWsResponse::FailedToConnect(e.to_string()));
+                match &self.ws {
+                    WebSocketConnection::Pending { info, .. }
+                    | WebSocketConnection::Connected { info, .. }
+                        if info.game_id == game_id || info.player_id == player_id =>
+                    {
+                        // Already connected with the right game and player IDs.
+                        self.link
+                            .respond(sender, WebSocketStatus::from(&self.ws).into());
+                    }
+                    _ => {
+                        if let Err(e) = self.join_round(game_id, player_id) {
+                            self.link
+                                .respond(sender, GameWsResponse::FailedToConnect(e.to_string()));
+                        }
+                    }
                 }
             }
             GameWsRequest::CloseSocket => {
                 self.link.send_message(YewWebSocketStatus::Closed);
             }
             GameWsRequest::Send(data) => {
-                if let WebSocketConnection::Connected(ws) = &mut self.ws {
-                    ws.send(Json(&data));
+                if let WebSocketConnection::Connected { task, .. } = &mut self.ws {
+                    task.send(Json(&data));
                 } else {
                     error!("Tried to send on non-opened WebSocket. Ignoring.");
                 }
@@ -180,7 +229,7 @@ impl GameWsMgr {
     }
 
     fn join_round(&mut self, game_id: String, player_id: String) -> Result<()> {
-        let url = format!("/api/round/{}/join?playerId={}", game_id, player_id);
+        let url = format!("/api/round/{}/join?playerId={}", &game_id, &player_id);
 
         // Build the URL with the right base, i.e. the same as the site
         let base = web_sys::window().unwrap().location().href().unwrap();
@@ -197,8 +246,12 @@ impl GameWsMgr {
 
         match self.ws_service.connect(&url, callback, notification) {
             Ok(task) => {
-                self.ws = WebSocketConnection::Pending(task);
-                self.broadcast_to_subscribers(GameWsResponse::Connecting);
+                let info = GameWsConnectionInfo { game_id, player_id };
+                self.ws = WebSocketConnection::Pending {
+                    info: info.clone(),
+                    task,
+                };
+                self.broadcast_to_subscribers(GameWsResponse::Connecting(info));
                 Ok(())
             }
             Err(e) => anyhow::bail!("Failed to connect WebSocket: {}", e),

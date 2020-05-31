@@ -8,7 +8,7 @@ use yew_router::agent::{RouteAgentDispatcher, RouteRequest};
 use yew_router::route::Route;
 
 use crate::agents::game_ws_mgr::*;
-use crate::html;
+use crate::html::*;
 use crate::routes::AppRoute;
 use crate::services::game_server::*;
 
@@ -121,7 +121,7 @@ impl Component for JoiningGame {
 
             (
                 JoinStep::JoinedGameWebSocketPending { player_id },
-                Msg::GameWsResponse(GameWsResponse::Connected),
+                Msg::GameWsResponse(GameWsResponse::Connected(_)),
             ) => {
                 let duration = Duration::from_secs(3);
                 let callback = self.link.callback(|_| Msg::SuccessfullyJoined);
@@ -166,7 +166,7 @@ impl Component for JoiningGame {
             JoinStep::WantToJoinGame => html! {
                 <>
                     <h3 class="title is-size-4">{ "Joining game..." }</h3>
-                    { html::progress_bar(1.0 / 5.0, "is-primary") }
+                    <ProgressBar progress=(1.0 / 5.0) class="is-primary" />
                     <p>{ "Game ID: " }{ &self.game_id }</p>
                     <p>{ "Player name: " }{ &self.username }</p>
                 </>
@@ -174,7 +174,7 @@ impl Component for JoiningGame {
             JoinStep::JoiningGame { .. } => html! {
                 <>
                     <h3 class="title is-size-4">{ "Joining game..." }</h3>
-                    { html::progress_bar(2.0 / 5.0, "is-primary") }
+                    <ProgressBar progress=(2.0 / 5.0) class="is-primary" />
                     <p>{ "Game ID: " }{ &self.game_id }</p>
                     <p>{ "Player name: " }{ &self.username }</p>
                 </>
@@ -182,7 +182,7 @@ impl Component for JoiningGame {
             JoinStep::JoinedGameWebSocketPending { player_id } => html! {
                 <>
                     <h3 class="title is-size-4">{ "Starting session..." }</h3>
-                    { html::progress_bar(3.0 / 5.0, "is-primary") }
+                    <ProgressBar progress=(3.0 / 5.0) class="is-primary" />
                     <p>{ "Game ID: " }{ &self.game_id }</p>
                     <p>{ "Player name: " }{ &self.username }</p>
                     <p>{ "Player ID: " }{ player_id }</p>
@@ -191,7 +191,7 @@ impl Component for JoiningGame {
             JoinStep::JoinedGameWithWebSocket { player_id, .. } => html! {
                 <>
                     <h3 class="title is-size-4">{ "Connected! Almost there..." }</h3>
-                    { html::progress_bar(4.0 / 5.0, "is-primary") }
+                    <ProgressBar progress=(4.0 / 5.0) class="is-primary" />
                     <p>{ "Game ID: " }{ &self.game_id }</p>
                     <p>{ "Player name: " }{ &self.username }</p>
                     <p>{ "Player ID: " }{ player_id }</p>
@@ -200,7 +200,7 @@ impl Component for JoiningGame {
             JoinStep::WaitingRedirect => html! {
                 <>
                     <h3 class="title is-size-4">{ "Enjoy :)" }</h3>
-                    { html::progress_bar(5.0 / 5.0, "is-primary") }
+                    <ProgressBar progress=(5.0 / 5.0) class="is-primary" />
                     <p>{ "Game ID: " }{ &self.game_id }</p>
                     <p>{ "Player name: " }{ &self.username }</p>
                 </>
@@ -208,7 +208,7 @@ impl Component for JoiningGame {
             JoinStep::JoinFailed { player_id, error } => html! {
                 <>
                     <h3 class="title is-size-4">{ "Failed to connect." }</h3>
-                    { html::progress_bar(1.0, "is-danger") }
+                    <ProgressBar progress=1.0 class="is-danger" />
                     <p>{ "Game ID: " }{ &self.game_id }</p>
                     <p>{ "Player name: " }{ &self.username }</p>
                     <p>{ "Player ID: " }{ format!("{:?}", player_id) }</p>
@@ -218,7 +218,7 @@ impl Component for JoiningGame {
             JoinStep::Failed => html! {
                 <>
                     <h3 class="title is-size-4">{ "Couldn't join, please retry later." }</h3>
-                    { html::progress_bar(1.0, "is-danger") }
+                    <ProgressBar progress=1.0 class="is-danger" />
                 </>
             },
         }

@@ -38,15 +38,11 @@ pub struct JoinRoundResponse {
 }
 
 #[derive(Default)]
-pub struct GameServerService {
-    web: FetchService,
-}
+pub struct GameServerService {}
 
 impl GameServerService {
     pub fn new() -> Self {
-        GameServerService {
-            web: FetchService::new(),
-        }
+        GameServerService {}
     }
 
     // pub fn create_round(
@@ -61,7 +57,7 @@ impl GameServerService {
     //         .header("Content-Type", "application/json")
     //         .body(Json(&request_body))
     //         .context("Failed to build create_round request.")?;
-
+    //
     //     let handler = move |response: Response<Json<Result<CreateRoundResponse>>>| {
     //         let (meta, Json(data)) = response.into_parts();
     //         if meta.status.is_success() {
@@ -96,6 +92,6 @@ impl GameServerService {
                 callback.emit(Err(anyhow!("{}", meta.status)))
             }
         };
-        self.web.fetch(request, handler.into()).unwrap()
+        FetchService::fetch(request, handler.into()).unwrap()
     }
 }

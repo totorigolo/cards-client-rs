@@ -30,8 +30,9 @@ pub enum WebSocketConnection {
     Connected(WebSocketTask),
 }
 
-#[derive(Debug)]
+#[derive(Debug, From)]
 pub enum Msg {
+    #[from]
     WsNotification(YewWebSocketStatus),
     WsReceived(Result<WsResponse>), // TODO: Try use Cow or Rc
 }
@@ -101,7 +102,6 @@ impl Agent for GameWsMgr {
     }
 
     fn update(&mut self, msg: Self::Message) {
-        trace!("Agent update: {:?}", msg);
         match msg {
             Msg::WsNotification(status) => {
                 let current_ws = std::mem::replace(&mut self.ws, WebSocketConnection::None);
@@ -129,7 +129,6 @@ impl Agent for GameWsMgr {
     }
 
     fn handle_input(&mut self, input: Self::Input, sender: HandlerId) {
-        trace!("Received in GameWsMgr from {:?}: {:?}", sender, input);
         match input {
             GameWsRequest::JoinRound { game_id, player_id } => {
                 if let Err(e) = self.join_round(game_id, player_id) {
@@ -138,7 +137,7 @@ impl Agent for GameWsMgr {
                 }
             }
             GameWsRequest::CloseSocket => {
-                self.ws = WebSocketConnection::None;
+                self.link.send_message(YewWebSocketStatus::Closed);
             }
             GameWsRequest::Send(data) => {
                 if let WebSocketConnection::Connected(ws) = &mut self.ws {
@@ -173,7 +172,8 @@ impl Agent for GameWsMgr {
 }
 
 impl GameWsMgr {
-    fn broadcast_to_subscribers(&self, output: GameWsResponse) {
+    fn broadcast_to_subscribers(&self, output: impl Into<GameWsResponse>) {
+        let output = output.into();
         for sub in self.subscribers.iter() {
             self.link.respond(*sub, output.clone());
         }

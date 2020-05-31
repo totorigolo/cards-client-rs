@@ -1,24 +1,24 @@
 use derive_more::From;
 use serde_json::json;
-use std::time::Duration;
 use yew::prelude::*;
-use yew::services::interval::IntervalService;
-use yew::services::Task;
 use yewtil::NeqAssign;
+use std::collections::VecDeque;
 
 use crate::agents::game_ws_mgr::*;
 use crate::agents::notifications::*;
 use crate::html;
 
+const MAX_HISTORY_LEN: usize = 500;
+
 pub struct WebSocketDebugConsole {
     link: ComponentLink<Self>,
     notification_bus: Dispatcher<NotificationBus>,
-    refresh_task: Option<Box<dyn Task>>,
 
     ws_agent: Box<dyn Bridge<GameWsMgr>>,
     ws_status: WebSocketStatus,
 
-    ws_history: Vec<String>,
+    ws_history: VecDeque<(usize, String)>,
+    ws_history_last_id: usize,
 
     game_id: String,
     player_id: String,
@@ -62,11 +62,11 @@ impl Component for WebSocketDebugConsole {
         WebSocketDebugConsole {
             link,
             notification_bus: NotificationBus::dispatcher(),
-            refresh_task: None,
 
             ws_agent: GameWsMgr::bridge(ws_msg_callback),
             ws_status: WebSocketStatus::NotConnected,
-            ws_history: vec![],
+            ws_history: VecDeque::with_capacity(MAX_HISTORY_LEN),
+            ws_history_last_id: 0,//std::usize::MAX,
 
             game_id: String::from(""),
             player_id: String::from(""),
@@ -83,13 +83,6 @@ impl Component for WebSocketDebugConsole {
             Msg::Command(command) => match command {
                 Command::Update => {
                     self.ws_agent.send(GameWsRequest::GetWebSocketStatus);
-
-                    // TODO: Fix Disconnect button issue before re-enabling this.
-                    // self.refresh_task = Some(Box::new(IntervalService::new().spawn(
-                    //     Duration::from_secs(5),
-                    //     self.link.callback(|_| Command::Update),
-                    // )));
-
                     false
                 }
                 Command::ConnectWebSocket => {
@@ -115,39 +108,42 @@ impl Component for WebSocketDebugConsole {
                 Event::WebSocketMessage(ws_msg) => match ws_msg {
                     GameWsResponse::Connecting => {
                         self.ws_status = WebSocketStatus::Pending;
-                        self.ws_history.push(format!("Connecting..."));
+                        self.push_in_history("Connecting...");
                         true
                     }
                     GameWsResponse::Connected => {
                         self.ws_status = WebSocketStatus::Connected;
-                        self.ws_history.push(format!("Connected"));
+                        self.push_in_history("Connected");
                         true
                     }
                     GameWsResponse::Closed => {
                         self.ws_status = WebSocketStatus::NotConnected;
-                        self.ws_history.push(format!("Disconnected"));
+                        self.push_in_history("Disconnected");
                         true
                     }
                     GameWsResponse::FailedToConnect(reason) => {
                         self.ws_status = WebSocketStatus::NotConnected;
-                        self.ws_history
-                            .push(format!("Failed to connect: {}", reason));
+                        self.push_in_history(format!("Failed to connect: {}", reason));
                         true
                     }
                     GameWsResponse::ErrorOccurred => {
                         self.ws_status = WebSocketStatus::NotConnected;
-                        self.ws_history.push(format!("An unknown error occurred."));
+                        self.push_in_history("An unknown error occurred.");
                         true
                     }
                     GameWsResponse::Received(data) => {
                         self.ws_status = WebSocketStatus::Connected;
-                        self.ws_history.push(format!("Received: {:?}", data));
+
+                        // Try to format (serialize) the data as JSON
+                        let as_json = serde_json::to_string(&data)
+                            .unwrap_or_else(|_| format!("{:?}", &data));
+
+                        self.push_in_history(format!("Received: {}", as_json));
                         true
                     }
                     GameWsResponse::ReceivedError(error) => {
                         self.ws_status = WebSocketStatus::Connected;
-                        self.ws_history
-                            .push(format!("Failed to decode received data: {:?}", error));
+                        self.push_in_history(format!("Failed to decode received data: {:?}", error));
                         true
                     }
                     GameWsResponse::WebSocketStatus(status) => self.ws_status.neq_assign(status),
@@ -171,11 +167,12 @@ impl Component for WebSocketDebugConsole {
         html! {
             <div class="columns">
                 <div class="column is-two-thirds is-flex is-flex-column">
-                    <h2 class="title is-size-4">{ "Message history" }</h2>
-                    <pre style="flex-grow: 1; white-space: pre-wrap;">
+                    <h2 class="title is-size-4">{ "Message history - " }{ self.ws_history.len() }</h2>
+                    <pre class="ws-console">
                         {
-                            // TODO: Add keys
-                            self.ws_history.join("\n")
+                            for self.ws_history.iter().map(|(id, line)| {
+                                html! { <p>{ format!("{} - {}", id, line) }</p> }
+                            })
                         }
                     </pre>
                 </div>
@@ -206,7 +203,7 @@ impl Component for WebSocketDebugConsole {
                             { "Send To WebSocket" }
                         </button>
                         <button class=("button is-fullwidth", "is-danger is-outlined")
-                                disabled=!connected
+                                disabled=!(pending || connected)
                                 onclick=self.link.callback(|_| Command::CloseWebSocket)>
                             { "Close WebSocket connection" }
                         </button>
@@ -214,5 +211,17 @@ impl Component for WebSocketDebugConsole {
                 </div>
             </div>
         }
+    }
+}
+
+impl WebSocketDebugConsole {
+    fn push_in_history(&mut self, line: impl ToString) {
+        while self.ws_history.len() >= MAX_HISTORY_LEN {
+            self.ws_history.pop_back();
+        }
+
+        self.ws_history_last_id = self.ws_history_last_id.wrapping_add(1);
+
+        self.ws_history.push_front((self.ws_history_last_id, line.to_string()));
     }
 }

@@ -37,3 +37,9 @@
 .section {
   padding-top: 0 !important;
 }
+
+.ws-console {
+  flex-grow: 1;
+  white-space: pre-wrap;
+  height: 30rem;
+}

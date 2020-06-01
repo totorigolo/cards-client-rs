@@ -150,7 +150,7 @@ impl Component for WebSocketDebugConsole {
                         let as_json =
                             serde_json::to_string(&data).unwrap_or_else(|_| format!("{:?}", &data));
 
-                        self.push_in_history(format!("<- {}", as_json));
+                        self.push_in_history(format!("< {}", as_json));
                         true
                     }
                     GameWsResponse::ReceivedError(error) => {
@@ -280,7 +280,7 @@ impl WebSocketDebugConsole {
 
     fn send_on_ws(&mut self, message: serde_json::Value) {
         let json = message.into();
-        self.push_in_history(format!("-> {}", &json));
+        self.push_in_history(format!("> {}", &json));
         self.ws_agent.send(GameWsRequest::Send(WsRequest(json)));
     }
 }

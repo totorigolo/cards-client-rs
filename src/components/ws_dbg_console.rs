@@ -90,10 +90,11 @@ impl Component for WebSocketDebugConsole {
                     false
                 }
                 Command::ConnectWebSocket => {
-                    self.ws_agent.send(GameWsRequest::JoinRound {
-                        game_id: self.game_id.clone(),
-                        player_id: self.player_id.clone(),
-                    });
+                    self.ws_agent
+                        .send(GameWsRequest::JoinRound(GameWsConnectionInfo {
+                            game_id: self.game_id.clone(),
+                            player_id: self.player_id.clone(),
+                        }));
                     false
                 }
                 Command::SendPing => {

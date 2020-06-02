@@ -23,7 +23,7 @@ pub struct GameWsMgr {
     ws: WebSocketConnection,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct GameWsConnectionInfo {
     pub game_id: String,
     pub player_id: String,
@@ -52,12 +52,12 @@ pub enum Msg {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum GameWsRequest {
     CloseSocket,
-    JoinRound { game_id: String, player_id: String },
+    JoinRound(GameWsConnectionInfo),
     Send(WsRequest),
     GetWebSocketStatus,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, From)]
+#[derive(Debug, Clone, From)]
 pub enum GameWsResponse {
     Closed,
     Connected(GameWsConnectionInfo),
@@ -73,7 +73,7 @@ pub enum GameWsResponse {
 /// Represents the state of the WebSocket. Differs from WebSocketConnection in
 /// that this is sent to subscribers, when WebSocketConnection holds the actual
 /// connection.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum WebSocketStatus {
     NotConnected,
     Pending(GameWsConnectionInfo),
@@ -167,17 +167,19 @@ impl Agent for GameWsMgr {
 
     fn handle_input(&mut self, input: Self::Input, sender: HandlerId) {
         match input {
-            GameWsRequest::JoinRound { game_id, player_id } => {
+            GameWsRequest::JoinRound(conn_info) => {
                 match &self.ws {
+                    // Already connected with the right game and player IDs.
                     WebSocketConnection::Pending { info, .. }
                     | WebSocketConnection::Connected { info, .. }
-                        if info.game_id == game_id || info.player_id == player_id =>
+                        if *info == conn_info =>
                     {
-                        // Already connected with the right game and player IDs.
                         self.link
                             .respond(sender, WebSocketStatus::from(&self.ws).into());
                     }
+                    // Otherwise, not connected or different connection info.
                     _ => {
+                        let GameWsConnectionInfo { game_id, player_id } = conn_info;
                         if let Err(e) = self.join_round(game_id, player_id) {
                             self.link
                                 .respond(sender, GameWsResponse::FailedToConnect(e.to_string()));

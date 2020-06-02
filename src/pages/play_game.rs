@@ -2,15 +2,17 @@ use derive_more::From;
 use yew::prelude::*;
 use yewtil::NeqAssign;
 
-use crate::agents::game_ws_mgr::*;
+use crate::agents::game_mgr::*;
+use crate::agents::game_ws_mgr::{GameWsConnectionInfo, WebSocketStatus};
 use crate::agents::notifications::*;
 
 pub struct PlayGame {
     link: ComponentLink<Self>,
     notification_bus: Dispatcher<NotificationBus>,
 
-    ws_agent: Box<dyn Bridge<GameWsMgr>>,
     ws_status: WebSocketStatus,
+
+    game_mgr_agent: Box<dyn Bridge<GameMgr>>,
 
     props: Props,
 }
@@ -34,7 +36,7 @@ pub enum Command {
 
 #[derive(Debug)]
 pub enum Event {
-    WebSocketMessage(GameWsResponse),
+    GameMgrMessage(GameMgrResponse),
 }
 
 impl NotificationSender for PlayGame {
@@ -49,13 +51,14 @@ impl Component for PlayGame {
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         link.send_message(Command::Update);
-        let ws_msg_callback = link.callback(Event::WebSocketMessage);
+        let game_mgr_msg_callback = link.callback(Event::GameMgrMessage);
         PlayGame {
             link,
             notification_bus: NotificationBus::dispatcher(),
 
-            ws_agent: GameWsMgr::bridge(ws_msg_callback),
             ws_status: WebSocketStatus::NotConnected,
+
+            game_mgr_agent: GameMgr::bridge(game_mgr_msg_callback),
 
             props,
         }
@@ -73,42 +76,20 @@ impl Component for PlayGame {
         match msg {
             Msg::Command(command) => match command {
                 Command::Update => {
-                    // Ensure we are connected.
-                    self.ws_agent.send(GameWsRequest::JoinRound {
-                        game_id: self.props.game_id.clone(),
-                        player_id: self.props.player_id.clone(),
-                    });
+                    self.game_mgr_agent.send(GameMgrRequest::EnsureConnected(
+                        GameWsConnectionInfo {
+                            game_id: self.props.game_id.clone(),
+                            player_id: self.props.player_id.clone(),
+                        },
+                    ));
                     false
                 }
             },
             Msg::Event(event) => match event {
-                Event::WebSocketMessage(ws_msg) => match ws_msg {
-                    GameWsResponse::Connecting(info) => {
-                        self.ws_status = WebSocketStatus::Pending(info);
-                        true
+                Event::GameMgrMessage(game_mgr_msg) => match game_mgr_msg {
+                    GameMgrResponse::WebSocketStatusChanged(status) => {
+                        self.ws_status.neq_assign(status)
                     }
-                    GameWsResponse::Connected(info) => {
-                        self.ws_status = WebSocketStatus::Connected(info);
-                        true
-                    }
-                    GameWsResponse::Closed => {
-                        self.ws_status = WebSocketStatus::NotConnected;
-                        true
-                    }
-                    GameWsResponse::FailedToConnect(reason) => {
-                        self.ws_status = WebSocketStatus::NotConnected;
-                        self.notify_error(format!("Failed to join game: {}", reason));
-                        true
-                    }
-                    GameWsResponse::ErrorOccurred => {
-                        self.ws_status = WebSocketStatus::NotConnected;
-                        // TODO: Who should be responsible for this notification?
-                        self.notify_error("Unknown error in WebSocket connection.");
-                        true
-                    }
-                    GameWsResponse::Received(_data) => true,
-                    GameWsResponse::ReceivedError(_error) => true,
-                    GameWsResponse::WebSocketStatus(status) => self.ws_status.neq_assign(status),
                 },
             },
         }

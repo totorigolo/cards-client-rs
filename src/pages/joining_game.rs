@@ -84,6 +84,7 @@ impl Component for JoiningGame {
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
         error!("JoiningGame: changed with {:?}", props);
+        // TODO: JoiningGame change()
         // trace!("Changed: {:?}", props);
         // self.game_id = props.game_id;
         // self.username = props.username;
@@ -108,10 +109,11 @@ impl Component for JoiningGame {
 
             (JoinStep::JoiningGame, Msg::JoinRoundResponse(Ok(response))) => {
                 let player_id = response.player_id;
-                self.game_ws_mgr.send(GameWsRequest::JoinRound {
-                    game_id: self.game_id.clone(),
-                    player_id: player_id.clone(),
-                });
+                self.game_ws_mgr
+                    .send(GameWsRequest::JoinRound(GameWsConnectionInfo {
+                        game_id: self.game_id.clone(),
+                        player_id: player_id.clone(),
+                    }));
                 JoinStep::JoinedGameWebSocketPending { player_id }
             }
             (step, Msg::JoinRoundResponse(Err(err))) => JoinStep::JoinFailed {

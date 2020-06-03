@@ -36,6 +36,13 @@ pub fn start() -> Result<(), JsValue> {
         .apply()
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
+    log::info!(
+        "{} v{}-{} starting.",
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION"),
+        env!("GIT_COMMIT_HASH")
+    );
+
     yew::start_app::<app::App>();
     Ok(())
 }

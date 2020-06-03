@@ -68,6 +68,13 @@ impl Component for App {
         let state_inner = self.state.clone();
         let state = move || state_inner.clone();
 
+        let pkg_version = format!(
+            "{} v{}-{}",
+            env!("CARGO_PKG_NAME"),
+            env!("CARGO_PKG_VERSION"),
+            env!("GIT_COMMIT_HASH")
+        );
+
         html! {
             <>
                 <components::Notifications />
@@ -111,7 +118,7 @@ impl Component for App {
 
                 <footer class="footer">
                     <div class="content has-text-centered">
-                        <p>{ "Wonderful footer" }</p>
+                        <p>{ pkg_version }</p>
                     </div>
                 </footer>
 

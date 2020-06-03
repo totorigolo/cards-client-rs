@@ -9,6 +9,7 @@ mod pages;
 mod routes;
 mod services;
 mod state;
+mod wire;
 
 use wasm_bindgen::prelude::*;
 

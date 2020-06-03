@@ -1,5 +1,4 @@
 use derive_more::From;
-use serde_json::json;
 use std::collections::VecDeque;
 use yew::prelude::*;
 use yewtil::NeqAssign;
@@ -7,6 +6,7 @@ use yewtil::NeqAssign;
 use crate::agents::game_ws_mgr::*;
 use crate::agents::notifications::*;
 use crate::html::*;
+use crate::wire;
 
 const MAX_HISTORY_LEN: usize = 500;
 
@@ -61,12 +61,17 @@ impl Component for WebSocketDebugConsole {
 
     fn create(_props: (), link: ComponentLink<Self>) -> Self {
         link.send_message(Command::Update);
+
         let ws_msg_callback = link.callback(Event::WebSocketMessage);
+
+        let mut ws_agent = GameWsMgr::bridge(ws_msg_callback);
+        ws_agent.send(GameWsRequest::SubscribeToSentMessages(true));
+
         WebSocketDebugConsole {
             link,
             notification_bus: NotificationBus::dispatcher(),
 
-            ws_agent: GameWsMgr::bridge(ws_msg_callback),
+            ws_agent,
             ws_status: WebSocketStatus::NotConnected,
             ws_history: VecDeque::with_capacity(MAX_HISTORY_LEN),
             ws_history_last_id: 0, //std::usize::MAX,
@@ -98,19 +103,24 @@ impl Component for WebSocketDebugConsole {
                     false
                 }
                 Command::SendPing => {
-                    self.send_on_ws(json!({"type": "PING"}));
+                    self.send_on_ws(wire::Message::Ping);
                     true
                 }
-                Command::SendMessage => match serde_json::from_str(&self.ws_message) {
-                    Ok(json) => {
-                        self.send_on_ws(json);
-                        true
+                Command::SendMessage => {
+                    match serde_json::from_str::<wire::Message>(&self.ws_message) {
+                        Ok(message) => {
+                            self.send_on_ws(message);
+                            true
+                        }
+                        Err(e) => {
+                            self.push_in_history(format!(
+                                "ERROR: Message is not correct JSON: {}",
+                                e
+                            ));
+                            true
+                        }
                     }
-                    Err(e) => {
-                        self.push_in_history(format!("ERROR: Message is not correct JSON: {}", e));
-                        true
-                    }
-                },
+                }
                 Command::CloseWebSocket => {
                     self.ws_agent.send(GameWsRequest::CloseSocket);
                     false
@@ -144,6 +154,14 @@ impl Component for WebSocketDebugConsole {
                     GameWsResponse::ErrorOccurred => {
                         self.push_in_history("An unknown error occurred.");
                         self.change_status(WebSocketStatus::NotConnected);
+                        true
+                    }
+                    GameWsResponse::Sent(data) => {
+                        // Try to format (serialize) the data as JSON
+                        let as_json =
+                            serde_json::to_string(&data).unwrap_or_else(|_| format!("{:?}", &data));
+
+                        self.push_in_history(format!("> {}", as_json));
                         true
                     }
                     GameWsResponse::Received(data) => {
@@ -279,9 +297,7 @@ impl WebSocketDebugConsole {
             .push_front((self.ws_history_last_id, line.to_string()));
     }
 
-    fn send_on_ws(&mut self, message: serde_json::Value) {
-        let json = message.into();
-        self.push_in_history(format!("> {}", &json));
-        self.ws_agent.send(GameWsRequest::Send(WsRequest(json)));
+    fn send_on_ws<M: Into<wire::Message>>(&mut self, message: M) {
+        self.ws_agent.send(GameWsRequest::Send(WsRequest(message.into())));
     }
 }

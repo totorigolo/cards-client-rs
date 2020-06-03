@@ -15,9 +15,13 @@ use yew::worker::*;
 // Re-export this for convenience
 pub use yew::agent::{Bridge, Bridged, Dispatched, Dispatcher};
 
+use crate::wire;
+
 pub struct GameWsMgr {
     link: AgentLink<Self>,
+
     subscribers: Vec<HandlerId>,
+    sent_subscribers: Vec<HandlerId>,
 
     ws_service: WebSocketService,
     ws: WebSocketConnection,
@@ -55,6 +59,7 @@ pub enum GameWsRequest {
     JoinRound(GameWsConnectionInfo),
     Send(WsRequest),
     GetWebSocketStatus,
+    SubscribeToSentMessages(bool),
 }
 
 #[derive(Debug, Clone, From)]
@@ -66,6 +71,7 @@ pub enum GameWsResponse {
     FailedToConnect(String),
     Received(WsResponse),
     ReceivedError(String), // TODO: Refine error type
+    Sent(WsRequest),
     #[from]
     WebSocketStatus(WebSocketStatus),
 }
@@ -107,12 +113,12 @@ impl From<&WebSocketConnection> for WebSocketStatus {
 }
 
 /// This type is used as a request which sent to websocket connection.
-#[derive(Serialize, Deserialize, Debug)]
-pub struct WsRequest(pub serde_json::Value);
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct WsRequest(pub wire::Message);
 
 /// This type is an expected response from a websocket connection.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct WsResponse(pub serde_json::Value);
+pub struct WsResponse(pub wire::Message);
 
 impl Agent for GameWsMgr {
     type Reach = Context<Self>;
@@ -124,6 +130,7 @@ impl Agent for GameWsMgr {
         GameWsMgr {
             link,
             subscribers: Vec::with_capacity(10), // TODO: Tune capacities
+            sent_subscribers: Vec::with_capacity(10), // TODO: Tune capacities
             ws_service: WebSocketService::new(),
             ws: WebSocketConnection::None,
         }
@@ -192,6 +199,9 @@ impl Agent for GameWsMgr {
             }
             GameWsRequest::Send(data) => {
                 if let WebSocketConnection::Connected { task, .. } = &mut self.ws {
+                    for sub in self.sent_subscribers.iter() {
+                        self.link.respond(*sub, GameWsResponse::Sent(data.clone()));
+                    }
                     task.send(Json(&data));
                 } else {
                     error!("Tried to send on non-opened WebSocket. Ignoring.");
@@ -200,6 +210,22 @@ impl Agent for GameWsMgr {
             GameWsRequest::GetWebSocketStatus => {
                 self.link
                     .respond(sender, WebSocketStatus::from(&self.ws).into());
+            }
+            GameWsRequest::SubscribeToSentMessages(subscribe) => {
+                let sender_position = self.sent_subscribers.iter().position(|id| *id == sender);
+                if subscribe {
+                    if sender_position.is_none() {
+                        trace!("New WS sent subscriber: {:?}", sender);
+                        self.sent_subscribers.push(sender);
+                    }
+                } else {
+                    if let Some(pos) = sender_position {
+                        self.sent_subscribers.swap_remove(pos);
+                        trace!("WS sent subscriber disconnected: {:?}", sender);
+                    } else {
+                        warn!("Disconnection but no associated subscriber.");
+                    }
+                }
             }
         }
     }

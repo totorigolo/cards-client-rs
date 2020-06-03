@@ -96,10 +96,8 @@ impl Agent for GameMgr {
                         GameWsResponse::ErrorOccurred => {
                             self.update_ws_status(WebSocketStatus::NotConnected)
                         }
-                        GameWsResponse::Received(ws_msg) => {
-                            log::debug!("Received: {:?}", ws_msg);
-                            false
-                        }
+                        GameWsResponse::Sent(_) => unreachable!("Never subscribed"),
+                        GameWsResponse::Received(ws_msg) => self.handle_ws_msg(ws_msg),
                         GameWsResponse::ReceivedError(_error) => false,
                         GameWsResponse::WebSocketStatus(status) => self.update_ws_status(status),
                     };
@@ -135,16 +133,21 @@ impl Agent for GameMgr {
     }
 }
 
-type Changed = bool;
+type WsStatusChanged = bool;
 
 impl GameMgr {
-    fn update_ws_status(&mut self, status: WebSocketStatus) -> Changed {
-        self.ws_status.neq_assign(status)
-    }
-
     fn broadcast_to_subscribers(&mut self, output: GameMgrResponse) {
         for sub in self.subscribers.iter() {
             self.link.respond(*sub, output.clone());
         }
+    }
+
+    fn update_ws_status(&mut self, status: WebSocketStatus) -> WsStatusChanged {
+        self.ws_status.neq_assign(status)
+    }
+
+    fn handle_ws_msg(&mut self, ws_msg: WsResponse) -> WsStatusChanged {
+        log::debug!("Received: {:?}", ws_msg);
+        false
     }
 }
